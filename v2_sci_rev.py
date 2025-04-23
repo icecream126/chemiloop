@@ -11,8 +11,10 @@ from guacamol.utils.chemistry import canonicalize
 from guacamol.common_scoring_functions import TanimotoScoringFunction
 import utils.utils
 from utils.metrics import get_isomer_c7h8n2o2_score, get_isomer_c9h10n2o2pf2cl_score, get_albuterol_similarity_score
-import get_v2_prompts
-import get_v2_json_prompts
+# import get_v2_prompts
+# import get_v2_json_prompts
+import prompts.v2.get_v2_json_prompts
+import prompts.v2.get_v2_prompts
 from openai import OpenAI
 
 
@@ -47,18 +49,6 @@ json_reviewer_llm = OpenAI(
     base_url="https://api.deepseek.com"
 )
 
-albuterol_smiles = 'CC(C)(C)NCC(C1=CC(=C(C=C1)O)CO)O'
-albuterol_canonical_smiles = canonicalize(albuterol_smiles) # 'CC(C)(C)NCC(O)c1ccc(O)c(CO)c1'
-albuterol_mol = Chem.MolFromSmiles(albuterol_smiles)
-albuterol_functional_group = utils.utils.describe_albuterol_features(albuterol_mol)
-
-
-
-scoring_fn = TanimotoScoringFunction(
-    target=albuterol_canonical_smiles,
-    fp_type='AP'  # you can also try 'AP', 'FCFP' etc.
-)
-
 BEST_SCORE = 0.0
 
 # --------------------------
@@ -90,7 +80,7 @@ class GraphState(TypedDict):
     reviewer_think: Dict[str, str]
     scientist_think: Dict[str, str]
     generated_smiles: str
-    target_prop: List[str]
+    task: List[str]
     score: float
     functional_groups: str
     json_output: bool
@@ -117,9 +107,17 @@ def scientist_node(state: GraphState) -> GraphState:
     TEXT_SMILES_HISTORY = utils.utils.format_set_as_text(SMILES_HISTORY)
     if state["json_output"]:
         if state["reviewer_think"] == "":
-            user_prompt = get_v2_json_prompts.get_scientist_prompt(state["prompt"], TEXT_SMILES_HISTORY)
+            if "albuterol_similarity" in state["task"]:
+                user_prompt = prompts.v2.get_v2_json_prompts.get_scientist_prompt_isomers_c7h8no2(TEXT_SMILES_HISTORY)
+            elif "isomers_c7h8n2o2" in state["task"]:
+                user_prompt = prompts.v2.get_v2_json_prompts.get_scientist_prompt_isomers_c7h8no2(TEXT_SMILES_HISTORY)
+            else:
+                raise NotImplementedError("Task not implemented")
         else:
-            user_prompt = get_v2_json_prompts.get_scientist_prompt_with_review(state["prompt"], state['scientist_think'], state['reviewer_think'], state["generated_smiles"], state["score"], state["functional_groups"], TEXT_SMILES_HISTORY)
+            if "albuterol_similarity" in state["task"]:
+                user_prompt = prompts.v2.get_v2_json_prompts.get_scientist_prompt_with_review(state["prompt"], state['scientist_think'], state['reviewer_think'], state["generated_smiles"], state["score"], state["functional_groups"], TEXT_SMILES_HISTORY)
+            elif "isomers_c7h8n2o2" in state["task"]:
+                user_prompt = prompts.v2.get_v2_json_prompts.get_scientist_prompt_with_review_isomers_c7h8n2o2(state["prompt"], state['scientist_think'], state['reviewer_think'], state["generated_smiles"], state["score"], state["functional_groups"], TEXT_SMILES_HISTORY)
         system_prompt = f"You are a skilled chemist."  # (include full system instructions here)
         # user_prompt = get_v2_json_prompts.get_scientist_prompt(state["prompt"], SMILES_HISTORY)  # (include full user prompt here)
         prompt = [
@@ -132,7 +130,7 @@ def scientist_node(state: GraphState) -> GraphState:
             model="deepseek-chat",
             messages=prompt,
             response_format={"type": "json_object"},
-            temperature=1.0,
+            temperature=args.scientist_temperature,
         )
 
         # Since the API guarantees a JSON object, you can access it directly:
@@ -158,7 +156,7 @@ def scientist_node(state: GraphState) -> GraphState:
                 'SMILES': "",
             }
     else:
-        prompt = get_v2_prompts.get_scientist_prompt(state["prompt"])
+        prompt = prompts.v2.get_v2_prompts.get_scientist_prompt(state["prompt"])
         response = scientist_llm([HumanMessage(content=prompt)]).content.strip()
         match = re.search(r"SMILES:\s*([^\s]+)", response)
         if match:
@@ -209,11 +207,13 @@ def reviewer_node(state: GraphState) -> GraphState:
     else:
         # TODO: Fix score to be list of scores (floats) for multiple target properties
         # define oracle score by target property
-        if "molecular weight" in state["target_prop"]:
+        if "molecular weight" in state["task"]:
             score = Chem.Descriptors.ExactMolWt(Chem.MolFromSmiles(state["generated_smiles"]))
             # TODO: modify score by diff of target property and pred_value
-        elif "albuterol_similarity" in state["target_prop"]:
+        elif "albuterol_similarity" in state["task"]:
             score = get_albuterol_similarity_score(state["generated_smiles"])
+        elif "isomers_c7h8n2o2" in state["task"]:
+            score = get_isomer_c7h8n2o2_score(state["generated_smiles"])
         else:
             raise NotImplementedError("Target property not implemented")
 
@@ -275,7 +275,10 @@ def reviewer_node(state: GraphState) -> GraphState:
     
     if state["json_output"]:
         system_prompt="You are a rigorous chemistry reviewer.\n"
-        user_prompt = get_v2_json_prompts.get_reviewer_prompt(state["scientist_think"], score, functional_groups)
+    if "albuterol_similarity" in state["task"]:
+        user_prompt = prompts.v2.get_v2_json_prompts.get_reviewer_prompt(state["scientist_think"], score, functional_groups)
+    elif "isomers_c7h8n2o2" in state["task"]:
+        user_prompt = prompts.v2.get_v2_json_prompts.get_reviewer_prompt_isomers_c7h8n2o2(state["scientist_think"], score, functional_groups)
         prompt = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
@@ -292,17 +295,13 @@ def reviewer_node(state: GraphState) -> GraphState:
         try:
             response = raw_response.choices[0].message.content  # Already a JSON string
             result = json.loads(response)  # Just in case it's not parsed automatically
-            SMILES = result.get("SMILES", "")
             reviewer_think_dict ={
                 'step1': result.get("step1", ""),
                 'step2': result.get("step2", ""),
                 'step3': result.get("step3", ""),
             }
-            if not SMILES:
-                print("SMILES field is missing or empty.")
         except Exception as e:
             print("Error extracting SMILES:", e)
-            SMILES = ""
             reviewer_think_dict = {
                 'step1': "",
                 'step2': "",
@@ -311,7 +310,7 @@ def reviewer_node(state: GraphState) -> GraphState:
 
     else:
         # get reviewer's prompt
-        prompt = get_v2_prompts.get_reviewer_prompt(state["prompt"], state['scientist_think'], score, functional_groups)
+        prompt = prompts.v2.get_v2_prompts.get_reviewer_prompt(state["prompt"], state['scientist_think'], score, functional_groups)
         
         # get reviewer's response
         response = reviewer_llm([HumanMessage(content=prompt)]).content.strip()
@@ -370,13 +369,16 @@ if __name__ == "__main__":
     # Compile graph
     graph = builder.compile()
 
+    args = parse_args()
+    user_prompt = prompts.v2.get_v2_json_prompts.get_user_prompt(args.task)
+
     input_state: GraphState = {
-        "prompt": f"Design a drug-like molecule structurally similar to albuterol (SMILES: {albuterol_smiles}, canonical: {albuterol_canonical_smiles}). Preserve the core scaffold and key functional groups. Albuterol contains: {albuterol_functional_group}.",
+        "prompt": user_prompt,
         "iteration": 0,
-        "max_iterations": 1000,
+        "max_iterations": args.max_iter,
         "scientist_think": "",
         "reviewer_think": "",
-        "target_prop": ["albuterol_similarity"],
+        "task": args.task,
         "score": 0.0,
         "functional_groups": "",
         "generated_smiles": "",

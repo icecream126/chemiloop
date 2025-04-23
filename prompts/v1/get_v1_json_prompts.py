@@ -1,5 +1,20 @@
 import json
 
+from rdkit import Chem
+from rdkit.Chem import Descriptors, rdMolDescriptors
+from guacamol.utils.chemistry import canonicalize
+import utils.utils
+
+def get_user_prompt(task):
+    if task == "albuterol":
+        albuterol_smiles = 'CC(C)(C)NCC(C1=CC(=C(C=C1)O)CO)O'
+        albuterol_canonical_smiles = canonicalize(albuterol_smiles)
+        albuterol_mol = Chem.MolFromSmiles(albuterol_smiles)
+        albuterol_functional_group = utils.utils.describe_albuterol_features(albuterol_mol)
+        return f""""Design a drug-like molecule structurally similar to albuterol (SMILES: {albuterol_smiles}, canonical: {albuterol_canonical_smiles}). Preserve the core scaffold and key functional groups. Albuterol contains: {albuterol_functional_group}."""
+    else:
+       print(f"No user prompt saved for this task: {task}.")
+       return ""
 def get_scientist_prompt(task, SMILES_HISTORY):
   return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition: {task}.
 

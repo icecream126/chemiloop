@@ -20,6 +20,13 @@ bce_loss = torch.nn.BCEWithLogitsLoss(reduction='mean')
 from rdkit import Chem
 from collections import defaultdict
 
+def format_topk_smiles(topk_smiles):
+    formatted = "\n".join(
+        f"({repr(smiles.strip())}, {score:.6f})"
+        for smiles, score in topk_smiles
+    )
+    return formatted
+
 def add_with_limit(s, item, max_len=20):
     if len(s) < max_len:
         s.add(item)

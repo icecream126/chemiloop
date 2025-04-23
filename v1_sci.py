@@ -13,8 +13,8 @@ from guacamol.utils.chemistry import canonicalize
 from guacamol.common_scoring_functions import TanimotoScoringFunction
 import utils.utils
 from utils.metrics import get_isomer_c7h8n2o2_score, get_albuterol_similarity_score
-import get_v1_json_prompts
-import get_v1_prompts
+from prompts.v1 import get_v1_json_prompts, get_v1_prompts
+from prompts.v2 import get_v2_json_prompts, get_v2_prompts
 
 import os
 import wandb
@@ -24,10 +24,7 @@ import torch
 from openai import OpenAI
 
 
-albuterol_smiles = 'CC(C)(C)NCC(C1=CC(=C(C=C1)O)CO)O'
-albuterol_canonical_smiles = canonicalize(albuterol_smiles)
-albuterol_mol = Chem.MolFromSmiles(albuterol_smiles)
-albuterol_functional_group = utils.utils.describe_albuterol_features(albuterol_mol)
+
 
 
 wandb.init(project="json_1000_pmo_v1_albutero_smilarity", name="history_pmo")
@@ -74,7 +71,7 @@ class GraphState(TypedDict):
     prompt: str
     iteration: int
     max_iterations: int
-    target_prop: List[str]
+    task: List[str]
     generated_smiles: str
     json_output: bool
 
@@ -100,7 +97,13 @@ def scientist_node(state: GraphState) -> GraphState:
     if state["json_output"]:
         system_prompt = f"You are a skilled chemist."  # (include full system instructions here)
         TEXT_SMILES_HISTORY = utils.utils.format_set_as_text(SMILES_HISTORY)
-        user_prompt = get_v1_json_prompts.get_scientist_prompt(state["prompt"], TEXT_SMILES_HISTORY)  # (include full user prompt here)
+        if "albuterol_similarity" in state["task"]:
+            user_prompt = get_v1_json_prompts.get_scientist_prompt(state["prompt"], TEXT_SMILES_HISTORY)  # (include full user prompt here)
+        elif "isomers_c7h8n2o2" in state["task"]:
+            user_prompt = get_v1_json_prompts.get_scientist_prompt_isomers_c7h8no2(state["prompt"], TEXT_SMILES_HISTORY)  # (include full user prompt here)
+        else:
+            raise NotImplementedError("Task not implemented")
+
         prompt = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
@@ -111,7 +114,7 @@ def scientist_node(state: GraphState) -> GraphState:
             model="deepseek-chat",
             messages=prompt,
             response_format={"type": "json_object"},
-            temperature=1.0,
+            temperature=args.scientist_temperature,
         )
 
         # Since the API guarantees a JSON object, you can access it directly:
@@ -158,8 +161,10 @@ def evaluate_scientist_smiles(state: GraphState) -> GraphState:
         score = 0.0
 
     else:
-        if "albuterol_similarity" in state["target_prop"]:
+        if "albuterol_similarity" in state["task"]:
             score = get_albuterol_similarity_score(state["generated_smiles"])
+        elif "isomers_c7h8n2o2" in state["task"]:
+            score = get_isomer_c7h8n2o2_score(state["generated_smiles"])
         else:
             raise NotImplementedError("Target property not implemented")
 
@@ -244,11 +249,14 @@ if __name__ == "__main__":
     builder.add_conditional_edges("evaluate_scientist_smiles", should_continue)
     graph = builder.compile()
 
+    args = parse_args()
+    user_prompt = get_v1_json_prompts.get_user_prompt(args.task)
+
     input_state: GraphState = {
-        "prompt": f"Design a drug-like molecule structurally similar to albuterol (SMILES: {albuterol_smiles}, canonical: {albuterol_canonical_smiles}). Preserve the core scaffold and key functional groups. Albuterol contains: {albuterol_functional_group}.",
+        "prompt": user_prompt,
         "iteration": 0,
-        "max_iterations": 1000,
-        "target_prop": ["albuterol_similarity"],
+        "max_iterations": args.max_iter,
+        "task": args.task,
         "generated_smiles": "",
         "json_output": True,
     }
