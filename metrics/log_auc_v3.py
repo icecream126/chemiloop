@@ -62,6 +62,7 @@ def compute_topk_auc_from_file(file_path, top_k=5, max_oracle_calls=1000, freq_l
             continue  # invalid SMILES
 
     # Step 3: Compute AUC
+    print("mol buffer length: ", len(mol_buffer))
     auc = top_auc(mol_buffer, top_k, finish=True, freq_log=freq_log, max_oracle_calls=max_oracle_calls)
     print(f"Top-{top_k} AUC Score: {auc:.4f}")
 
@@ -153,10 +154,10 @@ def plot_auc_progress_2(mol_buffer, top_k=5, freq_log=1, max_oracle_calls=1000, 
 # Example usage
 # ---------------------------
 if __name__ == "__main__":
-    file_path = "/home/khm/chemiloop/logs/2025-04-17-16-16-29-0rs86qzq/smiles.txt" # v2_isomer : 0.9960 (mol buffer length 78) (258 calls)
-    # file_path = "/home/khm/chemiloop/logs/2025-04-17-16-16-22-oa8pfog1/smiles.txt" # v2_albutero : 0.9993 (mol buffer length 39) (268 calls)
-    # file_path = "/home/khm/chemiloop/logs/2025-04-17-16-16-35-dqe56h9n/smiles.txt" # v1_isomer : 0.9968 (mol buffer length 23) (534 calls)
-    # file_path = "/home/khm/chemiloop/logs/2025-04-17-16-16-40-1zh2um3d/smiles.txt" # v1_albutero : 0.9513 (mol buffer length 7) (534 calls)
+    # file_path = "/home/khm/chemiloop/logs/2025-04-17-16-16-29-0rs86qzq/smiles.txt" # v2_isomer : 0.9960 (mol buffer length 113) (500 calls)
+    # file_path = "/home/khm/chemiloop/logs/2025-04-17-16-16-22-oa8pfog1/smiles.txt" # v2_albutero : 0.9993 (mol buffer length 80) (1000 calls)
+    # file_path = "/home/khm/chemiloop/logs/2025-04-17-16-16-35-dqe56h9n/smiles.txt" # v1_isomer : 0.9968 (mol buffer length 26) (1000 calls)
+    file_path = "/home/khm/chemiloop/logs/2025-04-17-16-16-40-1zh2um3d/smiles.txt" # v1_albutero : 0.9513 (mol buffer length 7) (1000 calls)
     top_k = 10
     max_oracle_calls = 1000
     freq_log = 1

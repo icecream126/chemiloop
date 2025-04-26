@@ -20,6 +20,30 @@ bce_loss = torch.nn.BCEWithLogitsLoss(reduction='mean')
 from rdkit import Chem
 from collections import defaultdict
 
+import time
+import traceback
+import json
+
+def safe_llm_call(prompt, llm, llm_type, llm_temperature, max_retries=3, sleep_sec=2):
+    for attempt in range(max_retries):
+        try:
+            raw_response = llm.chat.completions.create(
+                model=llm_type,
+                messages=prompt,
+                response_format={"type": "json_object"},
+                temperature=llm_temperature,
+            )
+            # content = raw_response.choices[0].message.content
+            # result = json.loads(content)
+            return raw_response# , content
+        except Exception as e:
+            print(f"[Error] LLM call failed on attempt {attempt + 1}: {e}")
+            traceback.print_exc()
+            time.sleep(sleep_sec)
+    print("[Warning] All retries failed. Returning empty output.")
+    return {}, ""
+
+
 def format_topk_smiles(topk_smiles):
     formatted = "\n".join(
         f"({repr(smiles.strip())}, {score:.6f})"

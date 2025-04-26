@@ -11,7 +11,7 @@ from guacamol.utils.chemistry import canonicalize
 from guacamol.common_scoring_functions import TanimotoScoringFunction
 import utils.utils
 from utils.metrics import get_isomer_c7h8n2o2_score, get_isomer_c9h10n2o2pf2cl_score, get_albuterol_similarity_score
-import prompts.v3.get_v3_json_prompts
+import prompts.v4.get_v4_json_prompts
 import pandas as pd
 from openai import OpenAI
 from typing import List, Tuple
@@ -30,7 +30,7 @@ import datetime
 args = parse_args()
 
 
-wandb.init(project=f"pmo_v3_{args.task[0]}", name="pmo",config=vars(args))# , mode='disabled')
+wandb.init(project=f"pmo_v4_{args.task}", name="pmo",config=vars(args))# , mode='disabled')
 current_time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 log_dir = f"./logs/{current_time}-{wandb.run.id}/"
 os.makedirs(log_dir, exist_ok=True)
@@ -40,6 +40,7 @@ DEEPSEEK_API_KEY = return_API_keys()["DEEPSEEK_API_KEY"]
 LOG_PATH = f"{log_dir}log.txt"
 SMILES_LOG_PATH = f"{log_dir}smiles.txt"
 BEST_SMILES_LOG_PATH = f"{log_dir}best_smiles.txt"
+WHOLE_SMILES_LOG_PATH = f"{log_dir}whole_smiles.txt"
 
 scientist_llm = ChatDeepSeek(model="deepseek-chat", temperature=1.0, api_key=DEEPSEEK_API_KEY)
 reviewer_llm = ChatDeepSeek(model="deepseek-chat", temperature=1.0, api_key=DEEPSEEK_API_KEY)
@@ -49,6 +50,10 @@ json_scientist_llm = OpenAI(
     base_url="https://api.deepseek.com"
 )
 json_reviewer_llm = OpenAI(
+    api_key=DEEPSEEK_API_KEY,  # Replace with your actual API key
+    base_url="https://api.deepseek.com"
+)
+json_double_checker_llm = OpenAI(
     api_key=DEEPSEEK_API_KEY,  # Replace with your actual API key
     base_url="https://api.deepseek.com"
 )
@@ -74,6 +79,10 @@ SMILES_HISTORY_LOG_PATH = f"{log_dir}smiles_history.txt"
 def SMILES_HISTORY_log(msg: str):
     with open(SMILES_HISTORY_LOG_PATH, "a") as f:
         f.write(msg + "\n")
+
+def whole_SMILES_log(msg: str):
+    with open(WHOLE_SMILES_LOG_PATH, "a") as f:
+        f.write(msg + "\n")
 # --------------------------
 # Graph State
 # --------------------------
@@ -83,6 +92,7 @@ class GraphState(TypedDict):
     max_iterations: int
     reviewer_think: Dict[str, str]
     scientist_think: Dict[str, str]
+    double_checker_think: Dict[str, str]
     generated_smiles: str
     task: List[str]
     score: float
@@ -90,11 +100,11 @@ class GraphState(TypedDict):
     json_output: bool
     topk_smiles: List[str]
     smiles_scores: List[Tuple[str, float]]
-    scientist_message: List[Dict[str, str]]
-    reviewer_message: List[Dict[str, str]]
+    in_double_checking_process: bool
+
 
 # --------------------------
-# Scientist node
+# Global Variables
 # --------------------------
 
 SMILES = ""
@@ -105,21 +115,44 @@ BEST_TOP_10_AUC_ALL = 0.0
 BEST_TOP_10_AUC_NO_1 = 0.0
 SMILES_HISTORY = set()
 
-# def retrieval_node(state: GraphState) -> GraphState:
-#     global SMILES
-#     global BEST_SCORE
-#     global BEST_SMILES
-#     global oracle_buffer
-#     global BEST_TOP_10_AUC_ALL
-#     global BEST_TOP_10_AUC_NO_1
+# Mapping for retrieval_node datasets
+TASK_TO_DATASET_PATH = {
+    "albuterol_similarity": "/home/khm/chemiloop/dataset/entire_top_5/albuterol_similarity_score.json",
+    "isomers_c7h8n2o2": "/home/khm/chemiloop/dataset/entire_top_5/isomer_c7h8n2o2_score.json",
+    "isomers_c9h10n2o2pf2cl": "/home/khm/chemiloop/dataset/entire_top_5/isomer_c9h10n2o2pf2cl_score.json",
+}
 
-#     # dataset: "/home/khm/chemiloop/dataset/guacamol.json"
-#     # dataset has SMILES, albuterol_similarity score, and isomers_c7h8n2o2 score
-#     # Take the user prompt state["prompt"]
-#     # Dataset 자체에 score들을 다 저장해놓을까..
-#     # If user prompt requires "albuterol_similarity", retrieve the SMILES based on top-K albuterol_similarity score
-#     # If user prompt requires "isomers_c7h8n2o2", retrieve the SMILES based on top-K isomers_c7h8n2o2 score
-#     # Return the retrieved SMILES and its score according to the task (e.g., such as albuterol similarity score)
+# Mapping for scoring functions
+TASK_TO_SCORING_FUNCTION = {
+    "albuterol_similarity": get_albuterol_similarity_score,
+    "isomers_c7h8n2o2": get_isomer_c7h8n2o2_score,
+    "isomers_c9h10n2o2pf2cl": get_isomer_c9h10n2o2pf2cl_score,
+}
+
+# Mapping for scientist prompt functions
+TASK_TO_SCIENTIST_PROMPT = {
+    "albuterol_similarity": prompts.v4.get_v4_json_prompts.get_scientist_prompt_isomers_c7h8n2o2,
+    "isomers_c7h8n2o2": prompts.v4.get_v4_json_prompts.get_scientist_prompt_isomers_c7h8n2o2,
+}
+
+# Mapping for scientist prompt with reviewer
+TASK_TO_SCIENTIST_PROMPT_WITH_REVIEW = {
+    "albuterol_similarity": prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_review,
+    "isomers_c7h8n2o2": prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_review_isomers_c7h8n2o2,
+}
+
+# Mapping for reviewer prompt
+TASK_TO_REVIEWER_PROMPT = {
+    "albuterol_similarity": prompts.v4.get_v4_json_prompts.get_reviewer_prompt,
+    "isomers_c7h8n2o2": prompts.v4.get_v4_json_prompts.get_reviewer_prompt_isomers_c7h8n2o2,
+}
+
+# Mapping for scientist prompt with double checker
+TASK_TO_SCIENTIST_PROMPT_WITH_DOUBLE_CHECKER = {
+    "albuterol_similarity": prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_double_checker_review,
+    "isomers_c7h8n2o2": prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_double_checker_review_isomers_c7g8n2o2,
+}
+
 
 def retrieval_node(state: GraphState) -> GraphState:
     
@@ -135,6 +168,7 @@ def retrieval_node(state: GraphState) -> GraphState:
         dataset_path = "/home/khm/chemiloop/dataset/entire_top_5/isomer_c9h10n2o2pf2cl_score.json"
     else:
         raise NotImplementedError("Unsupported task in retrieval_node.")
+    
     
     with open(dataset_path, "r") as f:
         dataset = json.load(f)
@@ -170,21 +204,29 @@ def scientist_node(state: GraphState) -> GraphState:
     global scientist_llm
     global SMILES_HISTORY
     print("\n==== Scientist Node ==")
-
     TEXT_SMILES_HISTORY = utils.utils.format_set_as_text(SMILES_HISTORY)
     topk_smiles = utils.utils.format_topk_smiles(state["topk_smiles"])
-    if state["reviewer_think"] == "":
+    if state["in_double_checking_process"] == True:
         if "albuterol_similarity" in state["task"]:
-            user_prompt = prompts.v3.get_v3_json_prompts.get_scientist_prompt_isomers_c7h8no2(TEXT_SMILES_HISTORY, topk_smiles)
+            user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_double_checker_review(prompt, state["scientist_think"], state['generated_smiles'], state["double_checker_think"])
         elif "isomers_c7h8n2o2" in state["task"]:
-            user_prompt = prompts.v3.get_v3_json_prompts.get_scientist_prompt_isomers_c7h8no2(TEXT_SMILES_HISTORY, topk_smiles)
+            user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_double_checker_review_isomers_c7g8n2o2(prompt, state["scientist_think"], state['generated_smiles'], state["double_checker_think"])
         else:
             raise NotImplementedError("Task not implemented")
-    else:
-        if "albuterol_similarity" in state["task"]:
-            user_prompt = prompts.v3.get_v3_json_prompts.get_scientist_prompt_with_review(state["prompt"], state['scientist_think'], state['reviewer_think'], state["generated_smiles"], state["score"], state["functional_groups"], TEXT_SMILES_HISTORY, topk_smiles)
-        elif "isomers_c7h8n2o2" in state["task"]:
-            user_prompt = prompts.v3.get_v3_json_prompts.get_scientist_prompt_with_review_isomers_c7h8n2o2(state["prompt"], state['scientist_think'], state['reviewer_think'], state["generated_smiles"], state["score"], state["functional_groups"], TEXT_SMILES_HISTORY, topk_smiles)
+            
+    else:       
+        if len(state["reviewer_think"]) == 0:
+            if "albuterol_similarity" in state["task"]:
+                user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_isomers_c7h8n2o2(TEXT_SMILES_HISTORY, topk_smiles)
+            elif "isomers_c7h8n2o2" in state["task"]:
+                user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_isomers_c7h8n2o2(TEXT_SMILES_HISTORY, topk_smiles)
+            else:
+                raise NotImplementedError("Task not implemented")
+        else:
+            if "albuterol_similarity" in state["task"]:
+                user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_review(state["prompt"], state['scientist_think'], state['reviewer_think'], state["generated_smiles"], state["score"], state["functional_groups"], TEXT_SMILES_HISTORY, topk_smiles)
+            elif "isomers_c7h8n2o2" in state["task"]:
+                user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_review_isomers_c7h8n2o2(state["prompt"], state['scientist_think'], state['reviewer_think'], state["generated_smiles"], state["score"], state["functional_groups"], TEXT_SMILES_HISTORY, topk_smiles)
     system_prompt = f"You are a skilled chemist."  # (include full system instructions here)
     # user_prompt = get_v2_json_prompts.get_scientist_prompt(state["prompt"], SMILES_HISTORY)  # (include full user prompt here)
     prompt = [
@@ -195,19 +237,21 @@ def scientist_node(state: GraphState) -> GraphState:
     # state["scientist_message"].append({"role": "user", "content": user_prompt})
 
     # print("Prompt to scientist node:", len(state["scientist_message"]))
-    
+
+
     raw_response = utils.utils.safe_llm_call(prompt, json_scientist_llm, args.scientist_model_name, args.scientist_temperature)
-    
+
     # Since the API guarantees a JSON object, you can access it directly:
     try:
         response = raw_response.choices[0].message.content  # Already a JSON string
         result = json.loads(response)  # Just in case it's not parsed automatically
-        SMILES = result.get("SMILES", "")
+        result = {k.lower(): v for k, v in result.items()}
+        SMILES = result.get("smiles", "")
         scientist_think_dict ={
             'step1': result.get("step1", ""),
             'step2': result.get("step2", ""),
             'step3': result.get("step3", ""),
-            'SMILES': SMILES,
+            'smiles': SMILES,
         }
         if not SMILES:
             print("SMILES field is missing or empty.")
@@ -218,7 +262,7 @@ def scientist_node(state: GraphState) -> GraphState:
             'step1': "",
             'step2': "",
             'step3': "",
-            'SMILES': "",
+            'smiles': "",
         }
     
     utils.utils.add_with_limit(SMILES_HISTORY, SMILES)
@@ -242,6 +286,51 @@ def scientist_node(state: GraphState) -> GraphState:
         "generated_smiles": SMILES,
     }
 
+def double_checker_node(state: GraphState) -> GraphState:
+    state["in_double_checking_process"] = False
+    print("\n==== Double Checker Node ==")
+    user_prompt = prompts.v4.get_v4_json_prompts.get_double_checker_prompt_json(state["prompt"], state["scientist_think"], state["generated_smiles"])
+    system_prompt = f"You are a meticulous double-checker LLM. Your task is to verify whether each step of the scientist’s reasoning is chemically valid and faithfully and logically reflected in the final SMILES string."  # (include full system instructions here)
+    
+    prompt = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ]
+
+    raw_response = utils.utils.safe_llm_call(prompt, json_double_checker_llm, args.double_checker_model_name, args.double_checker_temperature)
+    
+    try:
+        response = raw_response.choices[0].message.content  # Already a JSON string
+        result = json.loads(response)  # Just in case it's not parsed automatically
+        result = {k.lower(): v for k, v in result.items()}
+        # consistency = result.get("Consistency", "")
+        double_checker_think_dict ={
+            'step1': result.get("step1", ""),
+            'step2': result.get("step2", ""),
+            'step3': result.get("step3", ""),
+            'consistency': result.get("consistency", ""),
+        }
+    except Exception as e:
+        print("Error extracting SMILES:", e)
+        SMILES = ""
+        double_checker_think_dict = {
+            'step1': "",
+            'step2': "",
+            'step3': "",
+            'consistency': "",
+        }
+    
+    print("Response from double checker node:", response)
+    log("\n==== Double Checker Node ==")
+    log("Prompt for double checker:")
+    log(str(prompt))
+    log("Response from double checker node:")
+    log(str(response))
+    return {
+        **state, 
+        "double_checker_think": double_checker_think_dict
+    }
+
 
 def reviewer_node(state: GraphState) -> GraphState:
     print("\n==== Reviewer Node ==")
@@ -252,7 +341,7 @@ def reviewer_node(state: GraphState) -> GraphState:
     if mol is None:
         print("Invalid SMILES detected, retrying scientist node.")
         score = 0.0
-        state["scientist_think"]["SMILES"] += "(This SMILES is invalid, please retry.)"
+        state["scientist_think"]["smiles"] += "(This SMILES is invalid, please retry.)"
     else:
         # TODO: Fix score to be list of scores (floats) for multiple target properties
         # define oracle score by target property
@@ -268,8 +357,9 @@ def reviewer_node(state: GraphState) -> GraphState:
 
     state["smiles_scores"].append((state["generated_smiles"], score))
     SMILES_log(SMILES+" , "+str(score))
+    whole_SMILES_log(SMILES+" , "+str(score))
 
-    # oracle_buffer.append((SMILES, score))
+    oracle_buffer.append((SMILES, score))
 
     # update best score
     if int(score) != 1 and score > BEST_SCORE:
@@ -300,6 +390,7 @@ def reviewer_node(state: GraphState) -> GraphState:
         "best_score": BEST_SCORE,
         "best_smiles": BEST_SMILES,
     },step=state["iteration"])
+    log(f"Generated SMILES score: {score}")
     log(f"Top-10 avg (with 1.0): {top_10_all}")
     log(f"AUC all — Top-1: {auc_top1_all}, Top-10: {auc_top10_all}")
     log(f"Best AUC all — Top-1: {BEST_TOP_10_AUC_ALL}, Top-10: {BEST_TOP_10_AUC_NO_1}")
@@ -313,23 +404,21 @@ def reviewer_node(state: GraphState) -> GraphState:
     
     system_prompt="You are a rigorous chemistry reviewer.\n"
     if "albuterol_similarity" in state["task"]:
-        user_prompt = prompts.v3.get_v3_json_prompts.get_reviewer_prompt(state["scientist_think"], score, functional_groups)
+        user_prompt = prompts.v4.get_v4_json_prompts.get_reviewer_prompt(state["scientist_think"], score, functional_groups)
     elif "isomers_c7h8n2o2" in state["task"]:
-        user_prompt = prompts.v3.get_v3_json_prompts.get_reviewer_prompt_isomers_c7h8n2o2(state["scientist_think"], score, functional_groups)
+        user_prompt = prompts.v4.get_v4_json_prompts.get_reviewer_prompt_isomers_c7h8n2o2(state["scientist_think"], score, functional_groups)
     prompt = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
     ]
-    # state["reviewer_message"].append({"role": "system", "content": system_prompt})
-    # state["reviewer_message"].append({"role": "user", "content": user_prompt})
 
-    # Call the model with enforced JSON output
     raw_response = utils.utils.safe_llm_call(prompt, json_reviewer_llm, args.reviewer_model_name, args.reviewer_temperature)
 
     # Since the API guarantees a JSON object, you can access it directly:
     try:
         response = raw_response.choices[0].message.content  # Already a JSON string
         result = json.loads(response)  # Just in case it's not parsed automatically
+        result = {k.lower(): v for k, v in result.items()}
         reviewer_think_dict ={
             'step1': result.get("step1", ""),
             'step2': result.get("step2", ""),
@@ -347,6 +436,7 @@ def reviewer_node(state: GraphState) -> GraphState:
     print("Response from reviewer node:", response)
     log("\n==== Reviewer Node ==")
     log("Prompt to reviewer node:")
+    # log(str(state["reviewer_message"][-2:]))
     log(str(prompt))
     log("\nResponse from reviewer node:")
     log(str(response))
@@ -367,6 +457,12 @@ def should_continue(state: GraphState) -> str:
         return END
     return "scientist_node"
 
+def route_after_double_checker(state: GraphState) -> str:
+    if state["double_checker_think"]["consistency"].strip().lower() == "consistent":
+        return "reviewer_node"
+    state["in_double_checking_process"] = True
+    return "scientist_node"
+
 # --------------------------
 # Main execution
 # --------------------------
@@ -377,26 +473,28 @@ if __name__ == "__main__":
     builder.add_node("scientist_node", scientist_node)
     builder.add_node("reviewer_node", reviewer_node)
     builder.add_node("retrieval_node", retrieval_node)
+    builder.add_node("double_checker_node", double_checker_node)
     
     builder.set_entry_point("retrieval_node")  # if retrieval is the first step
     
     # After reviewer, decide whether to continue (reviewer → scientist OR END)
     builder.add_edge("retrieval_node", "scientist_node")
-    builder.add_edge("scientist_node", "reviewer_node")
-    # builder.add_conditional_edges("scientist_node", is_scientist_SMILES_valid)
+    builder.add_edge("scientist_node", "double_checker_node")
+    builder.add_conditional_edges("double_checker_node", route_after_double_checker)
     builder.add_conditional_edges("reviewer_node", should_continue)
 
     # Compile graph
     graph = builder.compile()
 
-    user_prompt = prompts.v3.get_v3_json_prompts.get_user_prompt(args.task)
+    user_prompt = prompts.v4.get_v4_json_prompts.get_user_prompt(args.task)
 
     input_state: GraphState = {
         "prompt": user_prompt,
         "iteration": 0,
         "max_iterations": args.max_iter,
-        "scientist_think": "",
-        "reviewer_think": "",
+        "scientist_think":{},
+        "reviewer_think": {},
+        "double_checker_think": {},
         "task": args.task,
         "score": 0.0,
         "functional_groups": "",
@@ -406,6 +504,7 @@ if __name__ == "__main__":
         "smiles_scores":[],
         "scientist_message": [],
         "reviewer_message": [],
+        "in_double_checking_process": False,
     }
     # Run the graph
     final_state = graph.invoke(input_state, {"recursion_limit": 9999})
