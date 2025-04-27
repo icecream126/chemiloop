@@ -6,12 +6,13 @@ from langchain_deepseek import ChatDeepSeek
 from langchain.schema import HumanMessage
 from rdkit import Chem
 from rdkit.Chem import Descriptors, rdMolDescriptors
+import prompts.v4.albuterol_similarity
 from utils.args import parse_args, return_API_keys
 from guacamol.utils.chemistry import canonicalize
 from guacamol.common_scoring_functions import TanimotoScoringFunction
 import utils.utils
-from utils.metrics import get_isomer_c7h8n2o2_score, get_isomer_c9h10n2o2pf2cl_score, get_albuterol_similarity_score
-import prompts.v4.get_v4_json_prompts
+from utils.metrics import get_isomers_c7h8n2o2_score, get_isomers_c9h10n2o2pf2cl_score, get_albuterol_similarity_score
+import prompts.v4
 import pandas as pd
 from openai import OpenAI
 from typing import List, Tuple
@@ -29,8 +30,8 @@ import datetime
 
 args = parse_args()
 
-
-wandb.init(project=f"pmo_v4_{args.task}", name="pmo",config=vars(args))# , mode='disabled')
+task = args.task[0] if type(args.task)==list else args.task 
+wandb.init(project=f"pmo_v4_{task}", name="pmo",config=vars(args))# , mode='disabled')
 current_time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 log_dir = f"./logs/{current_time}-{wandb.run.id}/"
 os.makedirs(log_dir, exist_ok=True)
@@ -118,39 +119,44 @@ SMILES_HISTORY = set()
 # Mapping for retrieval_node datasets
 TASK_TO_DATASET_PATH = {
     "albuterol_similarity": "/home/khm/chemiloop/dataset/entire_top_5/albuterol_similarity_score.json",
-    "isomers_c7h8n2o2": "/home/khm/chemiloop/dataset/entire_top_5/isomer_c7h8n2o2_score.json",
-    "isomers_c9h10n2o2pf2cl": "/home/khm/chemiloop/dataset/entire_top_5/isomer_c9h10n2o2pf2cl_score.json",
+    "isomers_c7h8n2o2": "/home/khm/chemiloop/dataset/entire_top_5/isomers_c7h8n2o2_score.json",
+    "isomers_c9h10n2o2pf2cl": "/home/khm/chemiloop/dataset/entire_top_5/isomers_c9h10n2o2pf2cl_score.json",
 }
 
 # Mapping for scoring functions
 TASK_TO_SCORING_FUNCTION = {
     "albuterol_similarity": get_albuterol_similarity_score,
-    "isomers_c7h8n2o2": get_isomer_c7h8n2o2_score,
-    "isomers_c9h10n2o2pf2cl": get_isomer_c9h10n2o2pf2cl_score,
+    "isomers_c7h8n2o2": get_isomers_c7h8n2o2_score,
+    "isomers_c9h10n2o2pf2cl": get_isomers_c9h10n2o2pf2cl_score,
 }
 
 # Mapping for scientist prompt functions
 TASK_TO_SCIENTIST_PROMPT = {
-    "albuterol_similarity": prompts.v4.get_v4_json_prompts.get_scientist_prompt_isomers_c7h8n2o2,
-    "isomers_c7h8n2o2": prompts.v4.get_v4_json_prompts.get_scientist_prompt_isomers_c7h8n2o2,
+    "albuterol_similarity": prompts.v4.albuterol_similarity.get_scientist_prompt,
+    "isomers_c7h8n2o2": prompts.v4.isomers_c7h8n2o2.get_scientist_prompt,
 }
 
 # Mapping for scientist prompt with reviewer
 TASK_TO_SCIENTIST_PROMPT_WITH_REVIEW = {
-    "albuterol_similarity": prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_review,
-    "isomers_c7h8n2o2": prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_review_isomers_c7h8n2o2,
+    "albuterol_similarity": prompts.v4.albuterol_similarity.get_scientist_prompt_with_review,
+    "isomers_c7h8n2o2": prompts.v4.isomers_c7h8n2o2.get_scientist_prompt_with_review,
 }
 
 # Mapping for reviewer prompt
 TASK_TO_REVIEWER_PROMPT = {
-    "albuterol_similarity": prompts.v4.get_v4_json_prompts.get_reviewer_prompt,
-    "isomers_c7h8n2o2": prompts.v4.get_v4_json_prompts.get_reviewer_prompt_isomers_c7h8n2o2,
+    "albuterol_similarity": prompts.v4.albuterol_similarity.get_reviewer_prompt,
+    "isomers_c7h8n2o2": prompts.v4.isomers_c7h8n2o2.get_reviewer_prompt,
 }
 
 # Mapping for scientist prompt with double checker
 TASK_TO_SCIENTIST_PROMPT_WITH_DOUBLE_CHECKER = {
-    "albuterol_similarity": prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_double_checker_review,
-    "isomers_c7h8n2o2": prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_double_checker_review_isomers_c7g8n2o2,
+    "albuterol_similarity": prompts.v4.albuterol_similarity.get_scientist_prompt_with_double_checker_review,
+    "isomers_c7h8n2o2": prompts.v4.isomers_c7h8n2o2.get_scientist_prompt_with_double_checker_review,
+}
+
+TASK_TO_DOUBLE_CHECKER_PROMPT = {
+    "albuterol_similarity": prompts.v4.albuterol_similarity.get_double_checker_prompt,
+    "isomers_c7h8n2o2": prompts.v4.isomers_c7h8n2o2.get_double_checker_prompt,
 }
 
 
@@ -160,36 +166,17 @@ def retrieval_node(state: GraphState) -> GraphState:
     # TODO: Extend this to entire train dataset
     # TODO: Add more tasks 
     # TODO: If not pre-computed, compute the top-k dataset
-    if "albuterol_similarity" in state["task"]:
-        dataset_path = "/home/khm/chemiloop/dataset/entire_top_5/albuterol_similarity_score.json"
-    elif "isomers_c7h8n2o2" in state["task"]:
-        dataset_path = "/home/khm/chemiloop/dataset/entire_top_5/isomer_c7h8n2o2_score.json"
-    elif "isomers_c9h10n2o2pf2cl" in state["task"]:
-        dataset_path = "/home/khm/chemiloop/dataset/entire_top_5/isomer_c9h10n2o2pf2cl_score.json"
-    else:
-        raise NotImplementedError("Unsupported task in retrieval_node.")
-    
+    task = state["task"][0] if type(state["task"])==list else state["task"]
+    dataset_path = TASK_TO_DATASET_PATH.get(task, None)
     
     with open(dataset_path, "r") as f:
         dataset = json.load(f)
-
+    
     topk_smiles = []
     for data in dataset:
         smiles = data["smiles"]
-        albuterol_similarity_score = data.get("albuterol_similarity_score", 0)
-        isomer_c7h8n2o2_score = data.get("isomer_c7h8n2o2_score", 0)
-        isomer_c9h10n2o2pf2cl_score = data.get("isomer_c9h10n2o2pf2cl_score", 0)
-
-        if "albuterol_similarity" in state["task"]:
-            topk_smiles.append((smiles, albuterol_similarity_score))
-        elif "isomers_c7h8n2o2" in state["task"]:
-            topk_smiles.append((smiles, isomer_c7h8n2o2_score))
-        elif "isomers_c9h10n2o2pf2cl" in state["task"]:
-            topk_smiles.append((smiles, isomer_c9h10n2o2pf2cl_score))
-    
-    # Use the top SMILES as the initial suggestion
-    # retrieved_smiles = top_df.iloc[0]["smiles"]
-    # retrieved_score = top_df.iloc[0][score_column]
+        score = data.get(f"{task}_score", 0)
+        topk_smiles.append((smiles, score))
 
     print(f"[Retrieval Node] Retrieved SMILES: ", str(topk_smiles))
 
@@ -206,27 +193,35 @@ def scientist_node(state: GraphState) -> GraphState:
     print("\n==== Scientist Node ==")
     TEXT_SMILES_HISTORY = utils.utils.format_set_as_text(SMILES_HISTORY)
     topk_smiles = utils.utils.format_topk_smiles(state["topk_smiles"])
-    if state["in_double_checking_process"] == True:
-        if "albuterol_similarity" in state["task"]:
-            user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_double_checker_review(prompt, state["scientist_think"], state['generated_smiles'], state["double_checker_think"])
-        elif "isomers_c7h8n2o2" in state["task"]:
-            user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_double_checker_review_isomers_c7g8n2o2(prompt, state["scientist_think"], state['generated_smiles'], state["double_checker_think"])
-        else:
-            raise NotImplementedError("Task not implemented")
+    task = state["task"][0] if type(state["task"])==list else state["task"] 
+
+    if state["in_double_checking_process"] == True:       
+        user_prompt = TASK_TO_SCIENTIST_PROMPT_WITH_DOUBLE_CHECKER[task](
+            state["scientist_think"], state['generated_smiles'], state["double_checker_think"]
+        )
             
     else:       
         if len(state["reviewer_think"]) == 0:
-            if "albuterol_similarity" in state["task"]:
-                user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_isomers_c7h8n2o2(TEXT_SMILES_HISTORY, topk_smiles)
-            elif "isomers_c7h8n2o2" in state["task"]:
-                user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_isomers_c7h8n2o2(TEXT_SMILES_HISTORY, topk_smiles)
-            else:
-                raise NotImplementedError("Task not implemented")
+            # if "albuterol_similarity" in state["task"]:
+            #     user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_isomers_c7h8n2o2(TEXT_SMILES_HISTORY, topk_smiles)
+            # elif "isomers_c7h8n2o2" in state["task"]:
+            #     user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_isomers_c7h8n2o2(TEXT_SMILES_HISTORY, topk_smiles)
+            # else:
+            #     raise NotImplementedError("Task not implemented")
+            user_prompt = TASK_TO_SCIENTIST_PROMPT[task](
+                TEXT_SMILES_HISTORY, topk_smiles
+            )
         else:
-            if "albuterol_similarity" in state["task"]:
-                user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_review(state["prompt"], state['scientist_think'], state['reviewer_think'], state["generated_smiles"], state["score"], state["functional_groups"], TEXT_SMILES_HISTORY, topk_smiles)
-            elif "isomers_c7h8n2o2" in state["task"]:
-                user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_review_isomers_c7h8n2o2(state["prompt"], state['scientist_think'], state['reviewer_think'], state["generated_smiles"], state["score"], state["functional_groups"], TEXT_SMILES_HISTORY, topk_smiles)
+            # if "albuterol_similarity" in state["task"]:
+            #     user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_review(state["prompt"], state['scientist_think'], state['reviewer_think'], state["generated_smiles"], state["score"], state["functional_groups"], TEXT_SMILES_HISTORY, topk_smiles)
+            # elif "isomers_c7h8n2o2" in state["task"]:
+            #     user_prompt = prompts.v4.get_v4_json_prompts.get_scientist_prompt_with_review_isomers_c7h8n2o2(state["prompt"], state['scientist_think'], state['reviewer_think'], state["generated_smiles"], state["score"], state["functional_groups"], TEXT_SMILES_HISTORY, topk_smiles)
+            user_prompt = TASK_TO_SCIENTIST_PROMPT_WITH_REVIEW[task](
+            state['scientist_think'], state['reviewer_think'],
+            state["generated_smiles"], state["score"], state["functional_groups"],
+                TEXT_SMILES_HISTORY, topk_smiles
+            )
+
     system_prompt = f"You are a skilled chemist."  # (include full system instructions here)
     # user_prompt = get_v2_json_prompts.get_scientist_prompt(state["prompt"], SMILES_HISTORY)  # (include full user prompt here)
     prompt = [
@@ -289,9 +284,12 @@ def scientist_node(state: GraphState) -> GraphState:
 def double_checker_node(state: GraphState) -> GraphState:
     state["in_double_checking_process"] = False
     print("\n==== Double Checker Node ==")
-    user_prompt = prompts.v4.get_v4_json_prompts.get_double_checker_prompt_json(state["prompt"], state["scientist_think"], state["generated_smiles"])
-    system_prompt = f"You are a meticulous double-checker LLM. Your task is to verify whether each step of the scientist’s reasoning is chemically valid and faithfully and logically reflected in the final SMILES string."  # (include full system instructions here)
     
+    task = state["task"][0] if type(state["task"])==list else state["task"] 
+    system_prompt = f"You are a meticulous double-checker LLM. Your task is to verify whether each step of the scientist’s reasoning is chemically valid and faithfully and logically reflected in the final SMILES string."  # (include full system instructions here)
+    user_prompt = TASK_TO_DOUBLE_CHECKER_PROMPT[task](
+                state["scientist_think"], state['generated_smiles']
+    )
     prompt = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
@@ -338,22 +336,14 @@ def reviewer_node(state: GraphState) -> GraphState:
     global json_reviewer_llm
     global reviewer_llm
     mol = Chem.MolFromSmiles(state["generated_smiles"])
+    task = state["task"][0] if type(state["task"])==list else state["task"] 
     if mol is None:
         print("Invalid SMILES detected, retrying scientist node.")
         score = 0.0
         state["scientist_think"]["smiles"] += "(This SMILES is invalid, please retry.)"
     else:
-        # TODO: Fix score to be list of scores (floats) for multiple target properties
-        # define oracle score by target property
-        if "molecular weight" in state["task"]:
-            score = Chem.Descriptors.ExactMolWt(Chem.MolFromSmiles(state["generated_smiles"]))
-            # TODO: modify score by diff of target property and pred_value
-        elif "albuterol_similarity" in state["task"]:
-            score = get_albuterol_similarity_score(state["generated_smiles"])
-        elif "isomers_c7h8n2o2" in state["task"]:
-            score = get_isomer_c7h8n2o2_score(state["generated_smiles"])
-        else:
-            raise NotImplementedError("Target property not implemented")
+        score = TASK_TO_SCORING_FUNCTION[task](state['generated_smiles'])
+        
 
     state["smiles_scores"].append((state["generated_smiles"], score))
     SMILES_log(SMILES+" , "+str(score))
@@ -373,8 +363,6 @@ def reviewer_node(state: GraphState) -> GraphState:
     
     scores_all = [s for _, s in oracle_buffer]
 
-    # auc_top1_all = utils.utils.compute_auc_topk_online_torch(scores_all, k=1)
-    # auc_top10_all = utils.utils.compute_auc_topk_online_torch(scores_all, k=10)
     import utils.auc
     auc_top10_all = utils.auc.compute_topk_auc(state["smiles_scores"], top_k=10, max_oracle_calls=1000, freq_log=1)[0]
     auc_top1_all = utils.auc.compute_topk_auc(state["smiles_scores"], top_k=1, max_oracle_calls=1000, freq_log=1)[0]
@@ -403,10 +391,15 @@ def reviewer_node(state: GraphState) -> GraphState:
         functional_groups = "No functional groups because your SMILES is invalid. Please retry."
     
     system_prompt="You are a rigorous chemistry reviewer.\n"
-    if "albuterol_similarity" in state["task"]:
-        user_prompt = prompts.v4.get_v4_json_prompts.get_reviewer_prompt(state["scientist_think"], score, functional_groups)
-    elif "isomers_c7h8n2o2" in state["task"]:
-        user_prompt = prompts.v4.get_v4_json_prompts.get_reviewer_prompt_isomers_c7h8n2o2(state["scientist_think"], score, functional_groups)
+    # if "albuterol_similarity" in state["task"]:
+    #     user_prompt = prompts.v4.get_v4_json_prompts.get_reviewer_prompt(state["scientist_think"], score, functional_groups)
+    # elif "isomers_c7h8n2o2" in state["task"]:
+    #     user_prompt = prompts.v4.get_v4_json_prompts.get_reviewer_prompt_isomers_c7h8n2o2(state["scientist_think"], score, functional_groups)
+
+
+    user_prompt = TASK_TO_REVIEWER_PROMPT[task](
+        state["scientist_think"], score, functional_groups
+    )
     prompt = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
@@ -486,10 +479,7 @@ if __name__ == "__main__":
     # Compile graph
     graph = builder.compile()
 
-    user_prompt = prompts.v4.get_v4_json_prompts.get_user_prompt(args.task)
-
     input_state: GraphState = {
-        "prompt": user_prompt,
         "iteration": 0,
         "max_iterations": args.max_iter,
         "scientist_think":{},

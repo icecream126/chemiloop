@@ -9,4 +9,6 @@
 /test/*
 test.py
 *.png
+*.pyc
 .env
+/oracle

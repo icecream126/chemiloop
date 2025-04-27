@@ -24,7 +24,7 @@ import time
 import traceback
 import json
 
-def safe_llm_call(prompt, llm, llm_type, llm_temperature, max_retries=3, sleep_sec=2):
+def safe_llm_call(prompt, llm, llm_type, llm_temperature, max_retries=10, sleep_sec=2):
     for attempt in range(max_retries):
         try:
             raw_response = llm.chat.completions.create(
@@ -79,7 +79,41 @@ def count_atoms(m):
 
     return text_output
 
+def describe_celecoxib_features(mol):
+    descriptions = []
 
+    # Detect sulfonamide group (-SO2NH-)
+    sulfonamide_count = Fragments.fr_sulfonamd(mol)
+    if sulfonamide_count:
+        descriptions.append(f"- {sulfonamide_count} sulfonamide group(s) (important for celecoxib's bioactivity).")
+
+    # Detect pyrazole ring (5-membered ring with 2 nitrogens)
+    pyrazole_smarts = Chem.MolFromSmarts("n1nccc1")  # Simple pyrazole core
+    pyrazole_matches = mol.GetSubstructMatches(pyrazole_smarts)
+    if pyrazole_matches:
+        descriptions.append(f"- {len(pyrazole_matches)} pyrazole ring(s) (5-membered N-heterocyclic rings).")
+
+    # Detect benzene rings
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s) (providing hydrophobicity).")
+
+    # Detect aryl-sulfonamide linkage via SMARTS: aromatic C-S(=O)(=O)-N
+    aromatic_sulfonamide_smarts = Chem.MolFromSmarts("cS(=O)(=O)N")
+    aromatic_sulfonamide_matches = mol.GetSubstructMatches(aromatic_sulfonamide_smarts)
+    if aromatic_sulfonamide_matches:
+        descriptions.append(f"- {len(aromatic_sulfonamide_matches)} aryl-sulfonamide linkage(s) (aromatic ring connected to sulfonamide group).")
+
+    # Detect para-substitution pattern
+    para_disubstitution = Fragments.fr_para_substituted_benzene(mol) if hasattr(Fragments, 'fr_para_substituted_benzene') else 0
+    if para_disubstitution:
+        descriptions.append(f"- {para_disubstitution} para-disubstituted benzene ring(s) (common in celecoxib).")
+
+    if not descriptions:
+        descriptions.append("- No key celecoxib-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
 
 def describe_albuterol_features(mol):
     descriptions = []
