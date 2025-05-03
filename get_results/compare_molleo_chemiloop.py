@@ -94,7 +94,7 @@ for task in tasks:
             molleo_csv_path_dict[task] = os.path.join(molleo_csv_dir, filename)
             break
 
-logdir = "/home/khm/chemiloop/compare"
+logdir = "/home/khm/chemiloop/comparison_plots"
 for task in tasks:
     molleo_csv = molleo_csv_path_dict.get(task)
     chemiloop_csv = chemiloop_csv_path_dict.get(task)
