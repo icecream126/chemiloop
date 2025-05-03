@@ -38,12 +38,6 @@ def top_auc(buffer, top_n, finish, freq_log, max_oracle_calls):
 def compute_topk_auc(smiles_scores, top_k=5, max_oracle_calls=1000, freq_log=1):
     # smiles_scores = []
 
-    # # Step 1: Read SMILES and score from the file
-    # with open(file_path, 'r') as f:
-    #     for line in f:
-    #         if ',' in line:
-    #             smi, score = line.strip().split(',')
-    #             smiles_scores.append((smi.strip(), float(score.strip())))
     print("number of generated smiles", len(smiles_scores))
     # Step 2: Remove invalid or duplicate SMILES
     seen = set()
@@ -62,6 +56,6 @@ def compute_topk_auc(smiles_scores, top_k=5, max_oracle_calls=1000, freq_log=1):
             continue  # invalid SMILES
 
     # Step 3: Compute AUC
-    auc = top_auc(mol_buffer, top_k, finish=True, freq_log=freq_log, max_oracle_calls=max_oracle_calls)
+    auc = top_auc(mol_buffer, top_k, finish=False, freq_log=freq_log, max_oracle_calls=max_oracle_calls)
     print(f"Top-{top_k} AUC Score: {auc:.4f}")
     return auc, mol_buffer

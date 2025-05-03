@@ -98,7 +98,7 @@ def get_thiothixene_rediscovery_score(smiles: str):
     oracle = Oracle(name = 'Thiothixene_Rediscovery')
     return oracle(smiles)
 
-def get_troglitazone_rediscovery_score(smiles: str):
+def get_troglitazon_rediscovery_score(smiles: str):
     oracle = Oracle(name = 'Troglitazone_Rediscovery')
     return oracle(smiles)
 

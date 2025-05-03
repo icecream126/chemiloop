@@ -51,7 +51,7 @@ def format_topk_smiles(topk_smiles):
     )
     return formatted
 
-def add_with_limit(s, item, max_len=20):
+def add_with_limit(s, item, max_len=10000):
     if len(s) < max_len:
         s.add(item)
         # return s
@@ -78,6 +78,542 @@ def count_atoms(m):
         text_output += f"- {atom}: {count}\n"
 
     return text_output
+
+def describe_zaleplon_features(mol):
+    descriptions = []
+
+    # Benzene rings
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s) (aromatic system).")
+
+    # Aromatic nitrogen heterocycles (important for zaleplon structure)
+    aromatic_nitrogen = Fragments.fr_Ar_N(mol)
+    if aromatic_nitrogen:
+        descriptions.append(f"- {aromatic_nitrogen} aromatic nitrogen atom(s) (indicative of nitrogen-containing heterocycles like pyrazole, pyridine).")
+
+    # Amide groups (C=O-N)
+    amide_count = Fragments.fr_amide(mol)
+    if amide_count:
+        descriptions.append(f"- {amide_count} amide bond(s) (C=O–N linkage).")
+
+    # Nitrile groups (C≡N)
+    nitrile_count = Fragments.fr_nitrile(mol)
+    if nitrile_count:
+        descriptions.append(f"- {nitrile_count} nitrile group(s) (C≡N triple bond).")
+
+    if not descriptions:
+        descriptions.append("- No key zaleplon-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+
+def describe_valsartan_features(mol):
+    descriptions = []
+
+    # Benzene rings
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s) (aromatic system).")
+
+    # Amide groups
+    amide_count = Fragments.fr_amide(mol)
+    if amide_count:
+        descriptions.append(f"- {amide_count} amide bond(s) (C=O–N linkages).")
+
+    # Tertiary amines
+    tertiary_amine = Fragments.fr_NH0(mol)
+    if tertiary_amine:
+        descriptions.append(f"- {tertiary_amine} tertiary amine group(s) (nitrogen with three carbon attachments).")
+
+    # Carboxylic acids
+    carboxylic_acid = Fragments.fr_COO(mol)
+    if carboxylic_acid:
+        descriptions.append(f"- {carboxylic_acid} carboxylic acid group(s) (COOH).")
+
+    if not descriptions:
+        descriptions.append("- No key valsartan-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+
+def describe_troglitazon_features(mol):
+    descriptions = []
+
+    # Phenol groups (aromatic OH)
+    phenol_count = Fragments.fr_phenol(mol)
+    if phenol_count:
+        descriptions.append(f"- {phenol_count} phenol group(s) (aromatic hydroxyl).")
+
+    # Benzene rings
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s) (aromatic system).")
+
+    # Alkyl ethers (O-alkyl, such as methoxy groups)
+    alkyl_ethers = Fragments.fr_ether(mol)
+    if alkyl_ethers:
+        descriptions.append(f"- {alkyl_ethers} alkyl ether group(s) (possibly methoxy groups).")
+
+    # Carbonyl groups (for TZD ring - C=O bonds)
+    carbonyls = Fragments.fr_C_O(mol)
+    if carbonyls:
+        descriptions.append(f"- {carbonyls} carbonyl group(s) (C=O, characteristic of thiazolidinedione ring).")
+
+    # Sulfur atoms (for TZD or sulfur-containing rings)
+    sulfur_count = sum(1 for atom in mol.GetAtoms() if atom.GetSymbol() == "S")
+    if sulfur_count:
+        descriptions.append(f"- {sulfur_count} sulfur atom(s) (suggesting sulfur-containing rings like TZD).")
+
+    if not descriptions:
+        descriptions.append("- No key troglitazone-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+
+def describe_thiothixene_features(mol):
+    descriptions = []
+
+    # Sulfur atom counts (important for thioxanthene core)
+    sulfur_count = sum(1 for atom in mol.GetAtoms() if atom.GetSymbol() == "S")
+    if sulfur_count:
+        descriptions.append(f"- {sulfur_count} sulfur atom(s) (suggesting thioxanthene or sulfur-containing core).")
+
+    # Piperazine ring (2 nitrogen atoms in 6-membered ring)
+    piperazine_like = Fragments.fr_NH0(mol)
+    if piperazine_like:
+        descriptions.append(f"- {piperazine_like} tertiary amine group(s) (related to piperazine presence).")
+
+    # Benzene rings
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s) (aromatic systems typical in thiothixene).")
+
+    # Aromatic amines (aromatic-NH connections)
+    aromatic_nh = Fragments.fr_Ar_N(mol)
+    if aromatic_nh:
+        descriptions.append(f"- {aromatic_nh} aromatic nitrogen(s) (often in antipsychotic scaffolds).")
+
+    if not descriptions:
+        descriptions.append("- No key thiothixene-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+
+def describe_sitagliptin_features(mol):
+    descriptions = []
+
+    # Fluorine atoms
+    fluorine_count = sum(1 for atom in mol.GetAtoms() if atom.GetSymbol() == "F")
+    if fluorine_count:
+        descriptions.append(f"- {fluorine_count} fluorine atom(s) (important for fluorinated drug-like properties).")
+
+    # Amide groups
+    amide_count = Fragments.fr_amide(mol)
+    if amide_count:
+        descriptions.append(f"- {amide_count} amide group(s) (key feature in drug scaffolds).")
+
+    # Tertiary amines
+    tertiary_amine = Fragments.fr_NH0(mol)
+    if tertiary_amine:
+        descriptions.append(f"- {tertiary_amine} tertiary amine group(s) (neutral nitrogen atoms).")
+
+
+    # Aliphatic hydroxyl groups (for TPSA)
+    aliphatic_oh = Fragments.fr_Al_OH(mol)
+    if aliphatic_oh:
+        descriptions.append(f"- {aliphatic_oh} aliphatic hydroxyl group(s) (polar substituents).")
+
+    # Benzene rings (sometimes present)
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s) (aromatic character).")
+
+    if not descriptions:
+        descriptions.append("- No key sitagliptin-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+
+
+def describe_scaffold_hop_features(mol):
+    descriptions = []
+
+    # Focus on substituents (side chains), not core scaffold
+    aromatic_oh = Fragments.fr_Ar_OH(mol)
+    if aromatic_oh:
+        descriptions.append(f"- {aromatic_oh} aromatic hydroxyl group(s) (important substituent).")
+
+    aliphatic_oh = Fragments.fr_Al_OH(mol)
+    if aliphatic_oh:
+        descriptions.append(f"- {aliphatic_oh} aliphatic hydroxyl group(s) (common polar side chain).")
+
+    amides = Fragments.fr_amide(mol)
+    if amides:
+        descriptions.append(f"- {amides} amide group(s) (common bioisostere side chain).")
+
+    ethers = Fragments.fr_ether(mol)
+    if ethers:
+        descriptions.append(f"- {ethers} ether group(s) (polar linker substituent).")
+
+    halogens = sum(1 for atom in mol.GetAtoms() if atom.GetSymbol() in ["F", "Cl", "Br", "I"])
+    if halogens:
+        descriptions.append(f"- {halogens} halogen atom(s) (substituent tuning reactivity or lipophilicity).")
+
+    if not descriptions:
+        descriptions.append("- No key substituent fragments found (possible pure scaffold structure).")
+
+    res = "\n".join(descriptions)
+    return res
+
+
+def describe_ranolazine_features(mol):
+    descriptions = []
+
+    # TPSA-relevant polar groups
+    aliphatic_oh = Fragments.fr_Al_OH(mol)
+    if aliphatic_oh:
+        descriptions.append(f"- {aliphatic_oh} aliphatic hydroxyl group(s) (enhances TPSA).")
+
+    amides = Fragments.fr_amide(mol)
+    if amides:
+        descriptions.append(f"- {amides} amide bond(s) (polar, improves TPSA).")
+
+    ethers = Fragments.fr_ether(mol)
+    if ethers:
+        descriptions.append(f"- {ethers} ether group(s) (common polar linkage).")
+
+    # Hydrophobicity
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s) (hydrophobic character).")
+
+
+    # Fluorine atoms
+    fluorine_count = sum(1 for atom in mol.GetAtoms() if atom.GetSymbol() == "F")
+    if fluorine_count:
+        descriptions.append(f"- {fluorine_count} fluorine atom(s) detected (fluorine tuning of properties).")
+
+    if not descriptions:
+        descriptions.append("- No key ranolazine-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+def describe_qed_features(mol):
+    descriptions = []
+
+    aromatic_rings = Fragments.fr_benzene(mol)
+    if aromatic_rings:
+        descriptions.append(f"- {aromatic_rings} benzene ring(s) (good for drug-likeness).")
+
+    aliphatic_hydroxy = Fragments.fr_Al_OH(mol)
+    if aliphatic_hydroxy:
+        descriptions.append(f"- {aliphatic_hydroxy} aliphatic hydroxyl group(s) (enhances solubility).")
+
+    amides = Fragments.fr_amide(mol)
+    if amides:
+        descriptions.append(f"- {amides} amide bond(s) (common in bioactive compounds).")
+
+    ethers = Fragments.fr_ether(mol)
+    if ethers:
+        descriptions.append(f"- {ethers} ether group(s) (common linker motifs in drugs).")
+
+
+    if not descriptions:
+        descriptions.append("- No key drug-likeness promoting fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+
+def describe_perindopril_features(mol):
+    descriptions = []
+
+    carboxylic_acid = Fragments.fr_COO(mol)
+    if carboxylic_acid:
+        descriptions.append(f"- {carboxylic_acid} carboxylic acid group(s) (important for ACE inhibition).")
+
+    amides = Fragments.fr_amide(mol)
+    if amides:
+        descriptions.append(f"- {amides} amide bond(s) (peptide-like linkages).")
+
+    secondary_amines = Fragments.fr_NH1(mol)
+    if secondary_amines:
+        descriptions.append(f"- {secondary_amines} secondary amine group(s) (N–H).")
+
+    aromatic_rings = Fragments.fr_benzene(mol)
+    if aromatic_rings:
+        descriptions.append(f"- {aromatic_rings} benzene ring(s) detected (although perindopril is primarily aliphatic).")
+
+    aliphatic_hydroxy = Fragments.fr_Al_OH(mol)
+    if aliphatic_hydroxy:
+        descriptions.append(f"- {aliphatic_hydroxy} aliphatic hydroxyl group(s) (–OH on non-aromatic carbon).")
+
+    if not descriptions:
+        descriptions.append("- No key perindopril-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+def describe_osimertinib_features(mol):
+    descriptions = []
+
+    aniline = Fragments.fr_Ar_N(mol)
+    if aniline:
+        descriptions.append(f"- {aniline} aniline-type aromatic amine group(s) detected (important for osimertinib's activity).")
+
+    acrylamide_like = Fragments.fr_amide(mol)
+    if acrylamide_like:
+        descriptions.append(f"- {acrylamide_like} amide group(s) (likely part of acrylamide-like warheads).")
+
+    methoxy_groups = Fragments.fr_ether(mol)
+    if methoxy_groups:
+        descriptions.append(f"- {methoxy_groups} ether group(s) (–O–), typically methoxy groups present in osimertinib structure.")
+
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s) (aromatic systems).")
+
+    if not descriptions:
+        descriptions.append("- No key osimertinib-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+def describe_mestranol_features(mol):
+    descriptions = []
+
+    phenol_count = Fragments.fr_phenol(mol)
+    if phenol_count:
+        descriptions.append(f"- {phenol_count} phenol group(s) (aromatic hydroxyls on an aromatic ring).")
+
+    ether_groups = Fragments.fr_ether(mol)
+    if ether_groups:
+        descriptions.append(f"- {ether_groups} ether linkage(s) (–O– group, e.g., methoxy group).")
+
+    aliphatic_oh = Fragments.fr_Al_OH(mol)
+    if aliphatic_oh:
+        descriptions.append(f"- {aliphatic_oh} aliphatic hydroxyl group(s) (e.g., alcohol group at 17-position).")
+
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s) (aromatic ring presence).")
+
+    if not descriptions:
+        descriptions.append("- No key mestranol-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+
+def describe_median2_features(mol):
+    descriptions = []
+
+    carbonyl_groups = Fragments.fr_C_O(mol)
+    if carbonyl_groups:
+        descriptions.append(f"- {carbonyl_groups} carbonyl group(s) (C=O, as in amide or ketone).")
+
+    tertiary_amines = Fragments.fr_NH0(mol)
+    if tertiary_amines:
+        descriptions.append(f"- {tertiary_amines} tertiary amine group(s) (no hydrogen attached).")
+
+    secondary_amines = Fragments.fr_NH1(mol)
+    if secondary_amines:
+        descriptions.append(f"- {secondary_amines} secondary amine group(s) (one hydrogen attached).")
+
+    ether_linkages = Fragments.fr_ether(mol)
+    if ether_linkages:
+        descriptions.append(f"- {ether_linkages} ether linkage(s) (–O– group).")
+
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s) (aromatic system).")
+
+    if not descriptions:
+        descriptions.append("- No key tadalafil/sildenafil-like features found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+def describe_median1_features(mol):
+    descriptions = []
+
+    hydroxyl_groups = Fragments.fr_Al_OH(mol)
+    if hydroxyl_groups:
+        descriptions.append(f"- {hydroxyl_groups} aliphatic hydroxyl group(s) (e.g., like in menthol).")
+
+    ketone_groups = Fragments.fr_C_O(mol)
+    if ketone_groups:
+        descriptions.append(f"- {ketone_groups} carbonyl group(s) (e.g., like in camphor).")
+
+    if not descriptions:
+        descriptions.append("- No key camphor/menthol-like features found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+def describe_jnk3_features(mol):
+    descriptions = []
+
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s) (aromatic system for π-π stacking with JNK3 binding pocket).")
+
+    hbond_donors = Fragments.fr_NH0(mol) + Fragments.fr_NH1(mol) + Fragments.fr_Al_OH(mol)
+    if hbond_donors:
+        descriptions.append(f"- {hbond_donors} potential hydrogen bond donor group(s) (amines or hydroxyls).")
+
+    hbond_acceptors = Fragments.fr_C_O(mol) + Fragments.fr_ether(mol) + Fragments.fr_amide(mol)
+    if hbond_acceptors:
+        descriptions.append(f"- {hbond_acceptors} potential hydrogen bond acceptor group(s) (carbonyls, ethers, amides).")
+
+    amide_groups = Fragments.fr_amide(mol)
+    if amide_groups:
+        descriptions.append(f"- {amide_groups} amide group(s) (important for hinge binding interactions).")
+
+    nitrogen_heterocycles = Fragments.fr_pyridine(mol) + Fragments.fr_imidazole(mol)
+    if nitrogen_heterocycles:
+        descriptions.append(f"- {nitrogen_heterocycles} nitrogen-containing aromatic ring(s) (pyridine, imidazole, etc.).")
+
+    if not descriptions:
+        descriptions.append("- No key JNK3-inhibitor-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+
+def describe_gsk3b_features(mol):
+    descriptions = []
+
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s) (aromatic system for π-stacking).")
+
+    hbond_donors = Fragments.fr_NH0(mol) + Fragments.fr_NH1(mol) + Fragments.fr_Al_OH(mol)
+    if hbond_donors:
+        descriptions.append(f"- {hbond_donors} potential H-bond donor group(s) (amines, hydroxyls).")
+
+    hbond_acceptors = Fragments.fr_C_O(mol) + Fragments.fr_ether(mol) + Fragments.fr_amide(mol)
+    if hbond_acceptors:
+        descriptions.append(f"- {hbond_acceptors} potential H-bond acceptor group(s) (carbonyls, ethers, amides).")
+
+    amides = Fragments.fr_amide(mol)
+    if amides:
+        descriptions.append(f"- {amides} amide group(s) (important for hinge binding to GSK3B).")
+
+    nitrogen_heterocycles = Fragments.fr_pyridine(mol) + Fragments.fr_imidazole(mol)
+    if nitrogen_heterocycles:
+        descriptions.append(f"- {nitrogen_heterocycles} nitrogen-containing aromatic ring(s) (e.g., pyridine, imidazole).")
+
+    if not descriptions:
+        descriptions.append("- No key GSK3B inhibitor-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+def describe_fexofenadine_features(mol):
+    descriptions = []
+
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s) (aromatic systems).")
+
+    carboxylic_acid = Fragments.fr_COO(mol)
+    if carboxylic_acid:
+        descriptions.append(f"- {carboxylic_acid} carboxylic acid group(s) (–COOH).")
+
+    aliphatic_oh = Fragments.fr_Al_OH(mol)
+    if aliphatic_oh:
+        descriptions.append(f"- {aliphatic_oh} aliphatic hydroxyl group(s) (non-aromatic alcohols).")
+
+    if not descriptions:
+        descriptions.append("- No key fexofenadine-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+
+def describe_drd2_features(mol):
+    descriptions = []
+
+    aromatic_rings = Fragments.fr_benzene(mol)
+    if aromatic_rings:
+        descriptions.append(f"- {aromatic_rings} benzene ring(s) (aromatic system).")
+
+    primary_amine = Fragments.fr_NH2(mol)
+    if primary_amine:
+        descriptions.append(f"- {primary_amine} primary amine group(s) (–NH₂).")
+
+    secondary_amine = Fragments.fr_NH1(mol)
+    if secondary_amine:
+        descriptions.append(f"- {secondary_amine} secondary amine group(s) (–NH–).")
+
+    tertiary_amine = Fragments.fr_NH0(mol)
+    if tertiary_amine:
+        descriptions.append(f"- {tertiary_amine} tertiary amine group(s) (–N–).")
+
+    if not descriptions:
+        descriptions.append("- No key DRD2-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+def describe_deco_hop_features(mol):
+    descriptions = []
+
+    sulfonamide_count = Fragments.fr_sulfonamd(mol)
+    if sulfonamide_count:
+        descriptions.append(f"- {sulfonamide_count} sulfonamide group(s) (–SO₂NH₂).")
+
+    amide_count = Fragments.fr_amide(mol)
+    if amide_count:
+        descriptions.append(f"- {amide_count} amide group(s) (–C(=O)–NH–).")
+
+    aromatic_nitrogen = Fragments.fr_Ar_N(mol)
+    if aromatic_nitrogen:
+        descriptions.append(f"- {aromatic_nitrogen} aromatic nitrogen atom(s) in the ring.")
+
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s).")
+
+    if not descriptions:
+        descriptions.append("- No key deco_hop-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
+
+
+def describe_amlodipine_features(mol):
+    descriptions = []
+
+    ester_count = Fragments.fr_ester(mol)
+    if ester_count:
+        descriptions.append(f"- {ester_count} ester group(s) (–COO– linkage).")
+
+    carbonyl_count = Fragments.fr_COO(mol)
+    if carbonyl_count:
+        descriptions.append(f"- {carbonyl_count} carbonyl-containing group(s) (e.g., ester C=O).")
+
+    benzene_rings = Fragments.fr_benzene(mol)
+    if benzene_rings:
+        descriptions.append(f"- {benzene_rings} benzene ring(s).")
+
+    aliphatic_amines = Fragments.fr_NH0(mol)
+    if aliphatic_amines:
+        descriptions.append(f"- {aliphatic_amines} tertiary amine group(s) (no N–H bond).")
+
+    if not descriptions:
+        descriptions.append("- No key amlodipine-like fragments found.")
+
+    res = "\n".join(descriptions)
+    return res
 
 def describe_celecoxib_features(mol):
     descriptions = []
