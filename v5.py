@@ -16,8 +16,9 @@ import prompts.task_prompts
 import pandas as pd
 from openai import OpenAI
 from typing import List, Tuple
-
-
+import utils.auc
+from utils.task_dicts import get_task_to_condition_dict, get_task_to_dataset_path_dict, get_task_to_score_dict, get_task_to_scientist_prompt_dict, get_task_to_scientist_prompt_with_review_dict, get_task_to_reviewer_prompt_dict, get_task_to_scientist_prompt_with_double_checker_dict, get_task_to_double_checker_prompt_dict, get_task_to_functional_group_dict
+import utils.tools as tools
 
 
 import json
@@ -31,7 +32,7 @@ import datetime
 args = parse_args()
 
 task = args.task[0] if type(args.task)==list else args.task 
-wandb.init(project=f"pmo_v4_no_redundancy", name=f"{task}",config=vars(args))# , mode='disabled')
+wandb.init(project=f"pmo_v5", name=f"{task}",config=vars(args))#  , mode='disabled')
 current_time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 log_dir = f"./logs/{current_time}-{wandb.run.id}/"
 os.makedirs(log_dir, exist_ok=True)
@@ -46,6 +47,10 @@ WHOLE_SMILES_LOG_PATH = f"{log_dir}whole_smiles.txt"
 scientist_llm = ChatDeepSeek(model="deepseek-chat", temperature=1.0, api_key=DEEPSEEK_API_KEY)
 reviewer_llm = ChatDeepSeek(model="deepseek-chat", temperature=1.0, api_key=DEEPSEEK_API_KEY)
 
+json_tool_call_llm = OpenAI(
+    api_key=DEEPSEEK_API_KEY,  # Replace with your actual API key
+    base_url="https://api.deepseek.com"
+)
 json_scientist_llm = OpenAI(
     api_key=DEEPSEEK_API_KEY,  # Replace with your actual API key
     base_url="https://api.deepseek.com"
@@ -58,6 +63,8 @@ json_double_checker_llm = OpenAI(
     api_key=DEEPSEEK_API_KEY,  # Replace with your actual API key
     base_url="https://api.deepseek.com"
 )
+
+
 
 BEST_SCORE = 0.0
 
@@ -104,6 +111,7 @@ class GraphState(TypedDict):
     in_double_checking_process: bool
     smiles_history: List[str]
     redundant_smiles: bool
+    tools_to_use: List[str]
 
 
 # --------------------------
@@ -118,221 +126,70 @@ BEST_TOP_10_AUC_ALL = 0.0
 BEST_TOP_10_AUC_NO_1 = 0.0
 SMILES_HISTORY = set()
 
-# Mapping for retrieval_node datasets
-TASK_TO_DATASET_PATH = {
-    "albuterol_similarity": "/home/khm/chemiloop/dataset/10k_top_5/albuterol_similarity_score.json",
-    "isomers_c7h8n2o2": "/home/khm/chemiloop/dataset/10k_top_5/isomers_c7h8n2o2_score.json",
-    "isomers_c9h10n2o2pf2cl": "/home/khm/chemiloop/dataset/10k_top_5/isomers_c9h10n2o2pf2cl_score.json",
-    "amlodipine_mpo": "/home/khm/chemiloop/dataset/10k_top_5/amlodipine_mpo_score.json",
-    "celecoxib_rediscovery": "/home/khm/chemiloop/dataset/10k_top_5/celecoxib_rediscovery_score.json",
-    "deco_hop": "/home/khm/chemiloop/dataset/10k_top_5/deco_hop_score.json",
-    "drd2": "/home/khm/chemiloop/dataset/10k_top_5/drd2_score.json",
-    "fexofenadine_mpo": "/home/khm/chemiloop/dataset/10k_top_5/fexofenadine_mpo_score.json",
-    "gsk3b": "/home/khm/chemiloop/dataset/10k_top_5/gsk3b_score.json",
-    "jnk3": "/home/khm/chemiloop/dataset/10k_top_5/jnk3_score.json",
-    "median1": "/home/khm/chemiloop/dataset/10k_top_5/median1_score.json",
-    "median2": "/home/khm/chemiloop/dataset/10k_top_5/median2_score.json",
-    "mestranol_similarity": "/home/khm/chemiloop/dataset/10k_top_5/mestranol_similarity_score.json",
-    "osimertinib_mpo": "/home/khm/chemiloop/dataset/10k_top_5/osimertinib_mpo_score.json",
-    "perindopril_mpo": "/home/khm/chemiloop/dataset/10k_top_5/perindopril_mpo_score.json",
-    "qed": "/home/khm/chemiloop/dataset/10k_top_5/qed_score.json",
-    "ranolazine_mpo": "/home/khm/chemiloop/dataset/10k_top_5/ranolazine_mpo_score.json",
-    "scaffold_hop": "/home/khm/chemiloop/dataset/10k_top_5/scaffold_hop_score.json",
-    "sitagliptin_mpo": "/home/khm/chemiloop/dataset/10k_top_5/sitagliptin_mpo_score.json",
-    "thiothixene_rediscovery": "/home/khm/chemiloop/dataset/10k_top_5/thiothixene_rediscovery_score.json",
-    "troglitazon_rediscovery": "/home/khm/chemiloop/dataset/10k_top_5/troglitazon_rediscovery_score.json",
-    "valsartan_smarts": "/home/khm/chemiloop/dataset/10k_top_5/valsartan_smarts_score.json",
-    "zaleplon_mpo": "/home/khm/chemiloop/dataset/10k_top_5/zaleplon_mpo_score.json",
+TASK_TO_CONDITION= get_task_to_condition_dict()
+TASK_TO_DATASET_PATH = get_task_to_dataset_path_dict()
+TASK_TO_SCORING_FUNCTION = get_task_to_score_dict()
+TASK_TO_SCIENTIST_PROMPT = get_task_to_scientist_prompt_dict()
+TASK_TO_SCIENTIST_PROMPT_WITH_REVIEW = get_task_to_scientist_prompt_with_review_dict()
+TASK_TO_REVIEWER_PROMPT = get_task_to_reviewer_prompt_dict()
+TASK_TO_SCIENTIST_PROMPT_WITH_DOUBLE_CHECKER = get_task_to_scientist_prompt_with_double_checker_dict()
+TASK_TO_DOUBLE_CHECKER_PROMPT = get_task_to_double_checker_prompt_dict()
+TASK_TO_FUNCTIONAL_GROUP = get_task_to_functional_group_dict()
 
-}
+def tool_call_node(state:GraphState) -> GraphState:
+    tool_path = "/home/khm/chemiloop/dataset/filtered_rdkit_tool.json"
 
-# Mapping for scoring functions
-TASK_TO_SCORING_FUNCTION = {
-    "albuterol_similarity": get_albuterol_similarity_score,
-    "isomers_c7h8n2o2": get_isomers_c7h8n2o2_score,
-    "isomers_c9h10n2o2pf2cl": get_isomers_c9h10n2o2pf2cl_score,
-    "amlodipine_mpo": get_amlodipine_mpo_score,
-    "celecoxib_rediscovery": get_celecoxib_rediscovery_score,
-    "deco_hop": get_deco_hop_score,
-    "drd2": get_drd2_score,
-    "fexofenadine_mpo": get_fexofenadine_mpo_score,
-    "gsk3b": get_gsk3b_score,
-    "jnk3": get_jnk3_score,
-    "median1": get_median1_score,
-    "median2": get_median2_score,
-    "mestranol_similarity": get_mestranol_similarity_score,
-    "osimertinib_mpo": get_osimertinib_mpo_score,
-    "perindopril_mpo": get_perindopril_mpo_score,
-    "qed":get_qed_score,
-    "ranolazine_mpo": get_ranolazine_mpo_score,
-    "scaffold_hop": get_scaffold_hop_score,
-    "sitagliptin_mpo": get_sitagliptin_mpo_score,
-    "thiothixene_rediscovery": get_thiothixene_rediscovery_score,
-    "troglitazon_rediscovery": get_troglitazon_rediscovery_score,
-    "valsartan_smarts": get_valsartan_smarts_score,
-    "zaleplon_mpo": get_zaleplon_mpo_score,
-}
+    with open(tool_path, "r") as tool_json:
+        tool_specs = json.load(tool_json)
 
-# Mapping for scientist prompt functions
-TASK_TO_SCIENTIST_PROMPT = {
-    "albuterol_similarity": prompts.task_prompts.albuterol_similarity.get_scientist_prompt,
-    "isomers_c7h8n2o2": prompts.task_prompts.isomers_c7h8n2o2.get_scientist_prompt,
-    "isomers_c9h10n2o2pf2cl": prompts.task_prompts.isomers_c9h10n2o2pf2cl.get_scientist_prompt,
-    "amlodipine_mpo": prompts.task_prompts.amlodipine_mpo.get_scientist_prompt,
-    "celecoxib_rediscovery": prompts.task_prompts.celecoxib_rediscovery.get_scientist_prompt,
-    "deco_hop": prompts.task_prompts.deco_hop.get_scientist_prompt,
-    "drd2": prompts.task_prompts.drd2.get_scientist_prompt,
-    "fexofenadine_mpo": prompts.task_prompts.fexofenadine_mpo.get_scientist_prompt,
-    "gsk3b": prompts.task_prompts.gsk3b.get_scientist_prompt,
-    "jnk3": prompts.task_prompts.jnk3.get_scientist_prompt,
-    "median1": prompts.task_prompts.median1.get_scientist_prompt,
-    "median2": prompts.task_prompts.median2.get_scientist_prompt,
-    "mestranol_similarity": prompts.task_prompts.mestranol_similarity.get_scientist_prompt,
-    "osimertinib_mpo": prompts.task_prompts.osimertinib_mpo.get_scientist_prompt,
-    "perindopril_mpo": prompts.task_prompts.perindopril_mpo.get_scientist_prompt,
-    "qed": prompts.task_prompts.qed.get_scientist_prompt,
-    "ranolazine_mpo": prompts.task_prompts.ranolazine_mpo.get_scientist_prompt,
-    "scaffold_hop": prompts.task_prompts.scaffold_hop.get_scientist_prompt,
-    "sitagliptin_mpo": prompts.task_prompts.sitagliptin_mpo.get_scientist_prompt,
-    "thiothixene_rediscovery": prompts.task_prompts.thiothixene_rediscovery.get_scientist_prompt,
-    "troglitazon_rediscovery": prompts.task_prompts.troglitazon_rediscovery.get_scientist_prompt,
-    "valsartan_smarts": prompts.task_prompts.valsartan_smarts.get_scientist_prompt,
-    "zaleplon_mpo": prompts.task_prompts.zaleplon_mpo.get_scientist_prompt,
-}
+    task = state["task"][0] if type(state["task"])==list else state["task"] 
+    system_prompt = """You are a professional AI chemistry assistant.
+You are given a molecule design condition and a set of available chemical tools (RDKit functions). Your goal is to:
 
-# Mapping for scientist prompt with reviewer
-TASK_TO_SCIENTIST_PROMPT_WITH_REVIEW = {
-    "albuterol_similarity": prompts.task_prompts.albuterol_similarity.get_scientist_prompt_with_review,
-    "isomers_c7h8n2o2": prompts.task_prompts.isomers_c7h8n2o2.get_scientist_prompt_with_review,
-    "isomers_c9h10n2o2pf2cl": prompts.task_prompts.isomers_c9h10n2o2pf2cl.get_scientist_prompt_with_review,
-    "amlodipine_mpo": prompts.task_prompts.amlodipine_mpo.get_scientist_prompt_with_review,
-    "celecoxib_rediscovery": prompts.task_prompts.celecoxib_rediscovery.get_scientist_prompt_with_review,
-    "deco_hop": prompts.task_prompts.deco_hop.get_scientist_prompt_with_review,
-    "drd2": prompts.task_prompts.drd2.get_scientist_prompt_with_review,
-    "fexofenadine_mpo": prompts.task_prompts.fexofenadine_mpo.get_scientist_prompt_with_review,
-    "gsk3b": prompts.task_prompts.gsk3b.get_scientist_prompt_with_review,
-    "jnk3": prompts.task_prompts.jnk3.get_scientist_prompt_with_review,
-    "median1": prompts.task_prompts.median1.get_scientist_prompt_with_review,
-    "median2": prompts.task_prompts.median2.get_scientist_prompt_with_review,
-    "mestranol_similarity": prompts.task_prompts.mestranol_similarity.get_scientist_prompt_with_review,
-    "osimertinib_mpo": prompts.task_prompts.osimertinib_mpo.get_scientist_prompt_with_review,
-    "perindopril_mpo": prompts.task_prompts.perindopril_mpo.get_scientist_prompt_with_review,
-    "qed": prompts.task_prompts.qed.get_scientist_prompt_with_review,
-    "ranolazine_mpo": prompts.task_prompts.ranolazine_mpo.get_scientist_prompt_with_review,
-    "scaffold_hop": prompts.task_prompts.scaffold_hop.get_scientist_prompt_with_review,
-    "sitagliptin_mpo": prompts.task_prompts.sitagliptin_mpo.get_scientist_prompt_with_review,
-    "thiothixene_rediscovery": prompts.task_prompts.thiothixene_rediscovery.get_scientist_prompt_with_review,
-    "troglitazon_rediscovery": prompts.task_prompts.troglitazon_rediscovery.get_scientist_prompt_with_review,
-    "valsartan_smarts": prompts.task_prompts.valsartan_smarts.get_scientist_prompt_with_review,
-    "zaleplon_mpo": prompts.task_prompts.zaleplon_mpo.get_scientist_prompt_with_review,
+1. Analyze the molecule design condition which is the goal of the task.
+2. Identify the key functional groups, structural features and miscellaneous molecular features (e.g., properties) related with the condition.
+3. Choose **as many tools as necessary** from the toolset that are relevant to solving the task.
+- The number of selected tools is **not limited**.
+4. Explain why each tool is useful for this task."""
 
-}
+    user_prompt = f"""This is a molecule design condition of the {task} task:
+{TASK_TO_CONDITION[task]}
+                
+Now output the tools to use by using the following JSON format.
+Take a deep breath and think carefully before writing your answer.
+```json
+{{
+  "tools_to_use": [
+    {{"name": "function_name_1", "reason": "Why this function is useful."}},
+    {{"name": "function_name_2", "reason": "Why this function is useful."}}
+  ]
+}}
+```"""
 
+    prompt = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ]
 
-TASK_TO_REVIEWER_PROMPT = {
-    "albuterol_similarity": prompts.task_prompts.albuterol_similarity.get_reviewer_prompt,
-    "isomers_c7h8n2o2": prompts.task_prompts.isomers_c7h8n2o2.get_reviewer_prompt,
-    "isomers_c9h10n2o2pf2cl": prompts.task_prompts.isomers_c9h10n2o2pf2cl.get_reviewer_prompt,
-    "amlodipine_mpo": prompts.task_prompts.amlodipine_mpo.get_reviewer_prompt,
-    "celecoxib_rediscovery": prompts.task_prompts.celecoxib_rediscovery.get_reviewer_prompt,
-    "deco_hop": prompts.task_prompts.deco_hop.get_reviewer_prompt,
-    "drd2": prompts.task_prompts.drd2.get_reviewer_prompt,
-    "fexofenadine_mpo": prompts.task_prompts.fexofenadine_mpo.get_reviewer_prompt,
-    "gsk3b": prompts.task_prompts.gsk3b.get_reviewer_prompt,
-    "jnk3": prompts.task_prompts.jnk3.get_reviewer_prompt,
-    "median1": prompts.task_prompts.median1.get_reviewer_prompt,
-    "median2": prompts.task_prompts.median2.get_reviewer_prompt,
-    "mestranol_similarity": prompts.task_prompts.mestranol_similarity.get_reviewer_prompt,
-    "osimertinib_mpo": prompts.task_prompts.osimertinib_mpo.get_reviewer_prompt,
-    "perindopril_mpo": prompts.task_prompts.perindopril_mpo.get_reviewer_prompt,
-    "qed": prompts.task_prompts.qed.get_reviewer_prompt,
-    "ranolazine_mpo": prompts.task_prompts.ranolazine_mpo.get_reviewer_prompt,
-    "scaffold_hop": prompts.task_prompts.scaffold_hop.get_reviewer_prompt,
-    "sitagliptin_mpo": prompts.task_prompts.sitagliptin_mpo.get_reviewer_prompt,
-    "thiothixene_rediscovery": prompts.task_prompts.thiothixene_rediscovery.get_reviewer_prompt,
-    "troglitazon_rediscovery": prompts.task_prompts.troglitazon_rediscovery.get_reviewer_prompt,
-    "valsartan_smarts": prompts.task_prompts.valsartan_smarts.get_reviewer_prompt,
-    "zaleplon_mpo": prompts.task_prompts.zaleplon_mpo.get_reviewer_prompt,
-}
+    raw_response = utils.utils.safe_llm_call(prompt = prompt, llm = json_tool_call_llm, llm_type = args.tool_call_model_name, llm_temperature = args.tool_call_temperature, max_retries=10, sleep_sec=2, tools=tool_specs)
+    response = raw_response.choices[0].message.content
+    try:
+        tool_json = json.loads(response)
+        tools_to_use = tool_json.get("tools_to_use", [])
+    except Exception as e:
+        print("Failed to parse JSON:", e)
+        tools_to_use = []
+    
+    log(f"\n==== Tool call Node - {state['iteration']} ==")
+    log("Prompt to tool call node:")
+    log(str(prompt))
+    log("\nResponse from tool call node:")
+    log(str(response))
 
-# Mapping for scientist prompt with double checker
-TASK_TO_SCIENTIST_PROMPT_WITH_DOUBLE_CHECKER = {
-    "albuterol_similarity": prompts.task_prompts.albuterol_similarity.get_scientist_prompt_with_double_checker_review,
-    "isomers_c7h8n2o2": prompts.task_prompts.isomers_c7h8n2o2.get_scientist_prompt_with_double_checker_review,
-    "isomers_c9h10n2o2pf2cl": prompts.task_prompts.isomers_c9h10n2o2pf2cl.get_scientist_prompt_with_double_checker_review,
-    "amlodipine_mpo": prompts.task_prompts.amlodipine_mpo.get_scientist_prompt_with_double_checker_review,
-    "celecoxib_rediscovery": prompts.task_prompts.celecoxib_rediscovery.get_scientist_prompt_with_double_checker_review,
-    "deco_hop": prompts.task_prompts.deco_hop.get_scientist_prompt_with_double_checker_review,
-    "drd2": prompts.task_prompts.drd2.get_scientist_prompt_with_double_checker_review,
-    "fexofenadine_mpo": prompts.task_prompts.fexofenadine_mpo.get_scientist_prompt_with_double_checker_review,
-    "gsk3b": prompts.task_prompts.gsk3b.get_scientist_prompt_with_double_checker_review,
-    "jnk3": prompts.task_prompts.jnk3.get_scientist_prompt_with_double_checker_review,
-    "median1": prompts.task_prompts.median1.get_scientist_prompt_with_double_checker_review,
-    "median2": prompts.task_prompts.median2.get_scientist_prompt_with_double_checker_review,
-    "mestranol_similarity": prompts.task_prompts.mestranol_similarity.get_scientist_prompt_with_double_checker_review,
-    "osimertinib_mpo": prompts.task_prompts.osimertinib_mpo.get_scientist_prompt_with_double_checker_review,
-    "perindopril_mpo": prompts.task_prompts.perindopril_mpo.get_scientist_prompt_with_double_checker_review,
-    "qed": prompts.task_prompts.qed.get_scientist_prompt_with_double_checker_review,
-    "ranolazine_mpo": prompts.task_prompts.ranolazine_mpo.get_scientist_prompt_with_double_checker_review,
-    "scaffold_hop": prompts.task_prompts.scaffold_hop.get_scientist_prompt_with_double_checker_review,
-    "sitagliptin_mpo": prompts.task_prompts.sitagliptin_mpo.get_scientist_prompt_with_double_checker_review,
-    "thiothixene_rediscovery": prompts.task_prompts.thiothixene_rediscovery.get_scientist_prompt_with_double_checker_review,
-    "troglitazon_rediscovery": prompts.task_prompts.troglitazon_rediscovery.get_scientist_prompt_with_double_checker_review,
-    "valsartan_smarts": prompts.task_prompts.valsartan_smarts.get_scientist_prompt_with_double_checker_review,
-    "zaleplon_mpo": prompts.task_prompts.zaleplon_mpo.get_scientist_prompt_with_double_checker_review
-}
-
-TASK_TO_DOUBLE_CHECKER_PROMPT = {
-    "albuterol_similarity": prompts.task_prompts.albuterol_similarity.get_double_checker_prompt,
-    "isomers_c7h8n2o2": prompts.task_prompts.isomers_c7h8n2o2.get_double_checker_prompt,
-    "isomers_c9h10n2o2pf2cl": prompts.task_prompts.isomers_c9h10n2o2pf2cl.get_double_checker_prompt,
-    "amlodipine_mpo": prompts.task_prompts.amlodipine_mpo.get_double_checker_prompt,
-    "celecoxib_rediscovery": prompts.task_prompts.celecoxib_rediscovery.get_double_checker_prompt,
-    "deco_hop": prompts.task_prompts.deco_hop.get_double_checker_prompt,
-    "drd2": prompts.task_prompts.drd2.get_double_checker_prompt,
-    "fexofenadine_mpo": prompts.task_prompts.fexofenadine_mpo.get_double_checker_prompt,
-    "gsk3b": prompts.task_prompts.gsk3b.get_double_checker_prompt,
-    "jnk3": prompts.task_prompts.jnk3.get_double_checker_prompt,
-    "median1": prompts.task_prompts.median1.get_double_checker_prompt,
-    "median2": prompts.task_prompts.median2.get_double_checker_prompt,
-    "mestranol_similarity": prompts.task_prompts.mestranol_similarity.get_double_checker_prompt,
-    "osimertinib_mpo": prompts.task_prompts.osimertinib_mpo.get_double_checker_prompt,
-    "perindopril_mpo": prompts.task_prompts.perindopril_mpo.get_double_checker_prompt,
-    "qed": prompts.task_prompts.qed.get_double_checker_prompt,
-    "ranolazine_mpo": prompts.task_prompts.ranolazine_mpo.get_double_checker_prompt,
-    "scaffold_hop": prompts.task_prompts.scaffold_hop.get_double_checker_prompt,
-    "sitagliptin_mpo": prompts.task_prompts.sitagliptin_mpo.get_double_checker_prompt,
-    "thiothixene_rediscovery": prompts.task_prompts.thiothixene_rediscovery.get_double_checker_prompt,
-    "troglitazon_rediscovery": prompts.task_prompts.troglitazon_rediscovery.get_double_checker_prompt,
-    "valsartan_smarts": prompts.task_prompts.valsartan_smarts.get_double_checker_prompt,
-    "zaleplon_mpo": prompts.task_prompts.zaleplon_mpo.get_double_checker_prompt
-}
-
-TASK_TO_FUNCTIONAL_GROUP = {
-    "albuterol_similarity": utils.utils.describe_albuterol_features,
-    "isomers_c7h8n2o2": utils.utils.count_atoms,
-    "isomers_c9h10n2o2pf2cl": utils.utils.count_atoms,
-    "amlodipine_mpo": utils.utils.describe_albuterol_features,
-    "celecoxib_rediscovery": utils.utils.describe_celecoxib_features,
-    "deco_hop": utils.utils.describe_deco_hop_features,
-    "drd2": utils.utils.describe_drd2_features,
-    "fexofenadine_mpo": utils.utils.describe_fexofenadine_features,
-    "gsk3b": utils.utils.describe_gsk3b_features,
-    "jnk3": utils.utils.describe_jnk3_features,
-    "median1": utils.utils.describe_median1_features,
-    "median2": utils.utils.describe_median2_features,
-    "mestranol_similarity": utils.utils.describe_mestranol_features,
-    "osimertinib_mpo": utils.utils.describe_osimertinib_features,
-    "perindopril_mpo": utils.utils.describe_albuterol_features,
-    "qed": utils.utils.describe_qed_features,
-    "ranolazine_mpo": utils.utils.describe_ranolazine_features,
-    "scaffold_hop": utils.utils.describe_scaffold_hop_features,
-    "sitagliptin_mpo": utils.utils.describe_sitagliptin_features,
-    "thiothixene_rediscovery": utils.utils.describe_thiothixene_features,
-    "troglitazon_rediscovery": utils.utils.describe_troglitazon_features,
-    "valsartan_smarts": utils.utils.describe_valsartan_features,
-    "zaleplon_mpo": utils.utils.describe_zaleplon_features,
-}
+    return {
+        **state,
+        "tools_to_use": tools_to_use,
+    }
 
 def retrieval_node(state: GraphState) -> GraphState:
     
@@ -381,7 +238,7 @@ def scientist_node(state: GraphState) -> GraphState:
                 state["redundant_smiles"] = False
                 
             user_prompt += TASK_TO_SCIENTIST_PROMPT[task](
-                TEXT_SMILES_HISTORY, topk_smiles
+                topk_smiles
             )
         else:
             if state["redundant_smiles"]:
@@ -428,10 +285,7 @@ def scientist_node(state: GraphState) -> GraphState:
         }
     
     utils.utils.add_with_limit(SMILES_HISTORY, SMILES)
-    if SMILES not in state["smiles_history"]:
-        state["smiles_history"].append(SMILES)
-    else:
-        state["redundant_smiles"] = True
+
     SMILES_HISTORY_log(str(SMILES_HISTORY))
     # Printing and logging
     print("Response from scientist node:", response)
@@ -531,11 +385,9 @@ def reviewer_node(state: GraphState) -> GraphState:
     sorted_all = sorted(oracle_buffer, key=lambda x: x[1], reverse=True)
     top_10_all = sum(score for _, score in sorted_all[:10]) / 10
     
-    scores_all = [s for _, s in oracle_buffer]
-
-    import utils.auc
-    auc_top10_all = utils.auc.compute_topk_auc(state["smiles_scores"], top_k=10, max_oracle_calls=1000, freq_log=1)[0]
-    auc_top1_all = utils.auc.compute_topk_auc(state["smiles_scores"], top_k=1, max_oracle_calls=1000, freq_log=1)[0]
+    finish = state["iteration"]+1>=state["max_iterations"]
+    auc_top10_all, mol_buffer = utils.auc.compute_topk_auc(state["smiles_scores"], top_k=10, max_oracle_calls=1000, freq_log=1, buffer_max_idx = state["iteration"]+1, finish=finish)
+    auc_top1_all, mol_buffer = utils.auc.compute_topk_auc(state["smiles_scores"], top_k=1, max_oracle_calls=1000, freq_log=1, buffer_max_idx = state["iteration"]+1, finish=finish)
     
     if auc_top10_all > BEST_TOP_10_AUC_ALL:
         BEST_TOP_10_AUC_ALL = auc_top10_all
@@ -554,9 +406,33 @@ def reviewer_node(state: GraphState) -> GraphState:
     log(f"Best AUC all — Top-1: {BEST_TOP_10_AUC_ALL}, Top-10: {BEST_TOP_10_AUC_NO_1}")
 
 
-    # analyze albutero-relsted functional group of generated smiles
+    # get the functional_groups information via LLM chosen tools
+    functional_groups = ["Functional groups and molecular features detected by RDKit tools:"]
     if mol is not None:
-        functional_groups = TASK_TO_FUNCTIONAL_GROUP[task](mol)
+        for tool in state["tools_to_use"]:
+            func_name = tool["name"].lower()
+            reason = tool["reason"]
+            
+            try:
+                func = getattr(tools, func_name)
+                result = func(mol)
+
+                report = f"""Tool: `{func_name}`
+        Reason: {reason}
+        Output: `{result}`
+
+        """
+                functional_groups.append(report)
+
+            except Exception as e:
+                report = f"""Tool: `{func_name}`
+        Reason: {reason}
+        Error: Could not execute `{func_name}` — {str(e)}
+
+        """
+                functional_groups.append(report)
+        functional_groups = "\n".join(functional_groups)
+        
     else:
         functional_groups = "No functional groups because your SMILES is invalid. Please retry."
     
@@ -621,6 +497,7 @@ def check_redundant_smiles(state: GraphState) -> str:
         print("Redundant SMILES detected, retrying scientist node.")
         return "scientist_node"
     else:
+        state["smiles_history"].append(state["generated_smiles"])
         return "double_checker_node"
 
 def route_after_double_checker(state: GraphState) -> str:
@@ -636,17 +513,19 @@ if __name__ == "__main__":
     builder = StateGraph(GraphState)
 
     # Add nodes
+    builder.add_node("tool_call_node", tool_call_node)
     builder.add_node("scientist_node", scientist_node)
     builder.add_node("reviewer_node", reviewer_node)
     builder.add_node("retrieval_node", retrieval_node)
     builder.add_node("double_checker_node", double_checker_node)
     
-    builder.set_entry_point("retrieval_node")  # if retrieval is the first step
+    builder.set_entry_point("tool_call_node")  # if tool_call is the first step
     
     # After reviewer, decide whether to continue (reviewer → scientist OR END)
+    builder.add_edge("tool_call_node", "retrieval_node")
     builder.add_edge("retrieval_node", "scientist_node")
-    # builder.add_conditional_edges("scientist_node", check_redundant_smiles)
-    builder.add_edge("scientist_node", "double_checker_node")
+    builder.add_conditional_edges("scientist_node", check_redundant_smiles)
+    # builder.add_edge("scientist_node", "double_checker_node")
     builder.add_conditional_edges("double_checker_node", route_after_double_checker)
     builder.add_conditional_edges("reviewer_node", should_continue)
 
@@ -671,6 +550,7 @@ if __name__ == "__main__":
         "in_double_checking_process": False,
         "smiles_history": [],
         "redundant_smiles": False,
+        "tools_to_use":[],
     }
     # Run the graph
     final_state = graph.invoke(input_state, {"recursion_limit": 9999})

@@ -7,6 +7,8 @@ ranolazine_fp = rdMolDescriptors.GetHashedAtomPairFingerprintAsBitVect(ranolazin
 
 def get_scientist_prompt(topk_smiles):
     return f"""Your task is to design a SMILES string for a molecule that satisfies the following conditions:
+
+Condition for molecule design:
 - High structural Tanimoto similarity to ranolazine (SMILES: COc1ccccc1OCC(O)CN2CCN(CC(=O)Nc3c(C)cccc3C)CC2).
 - Achieve a Topological Polar Surface Area (TPSA) around **95**.
 - Maintain a lipophilicity (LogP) around **7**.
@@ -35,7 +37,7 @@ Take a deep breath and think carefully before writing your answer.
   "SMILES": "Your valid SMILES string here"
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE. """
+ """
 
 def get_scientist_prompt_with_review(scientist_think_dict, reviewer_feedback_dict, previous_smiles, score, functional_groups, SMILES_HISTORY, topk_smiles):
     mol=Chem.MolFromSmiles(scientist_think_dict["smiles"])
@@ -118,7 +120,7 @@ Take a deep breath and think carefully before writing your answer.
   "SMILES": "Your corrected valid SMILES string"
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE. """
+ """
 
 def get_reviewer_prompt(scientist_think_dict, score, functional_groups):
     mol=Chem.MolFromSmiles(scientist_think_dict["smiles"])
@@ -178,7 +180,7 @@ Take a deep breath and think carefully before writing your answer.
   "step3": "Verify logical consistency between design reasoning and final SMILES structure."
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE. """
+ """
 
 def get_scientist_prompt_with_double_checker_review(previous_thinking, previous_smiles, double_checker_feedback, SMILES_HISTORY):
     return f"""YOU MUST NOT REPEAT ANY OF THE PREVIOUSLY GENERATED SMILES:
@@ -221,7 +223,7 @@ Take a deep breath and think carefully before writing your answer.
   "SMILES": "Your improved SMILES string."
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE. """
+ """
 
 def get_double_checker_prompt(thinking, improved_smiles):
     return f"""You will be given:
@@ -268,4 +270,4 @@ Use the following format:
   "consistency": "Consistent" or "Inconsistent"
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE. """
+ """

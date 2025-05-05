@@ -78,9 +78,11 @@ def parse_args(*args):
     parser.add_argument('--scientist-temperature', type=float, default=1.5, help='Temperature setting for scientist LLM')
     parser.add_argument('--reviewer-temperature', type=float, default=1.5, help='Temperature setting for reviewer LLM')
     parser.add_argument('--double-checker-temperature', type=float, default=1.5, help='Temperature setting for reviewer LLM')
+    parser.add_argument('--tool-call-temperature', type=float, default=1.5, help='Temperature setting for tool call LLM')
     parser.add_argument('--scientist-model-name', type=str, default="deepseek-chat", help='Scientist LLM model, gpt-4o')
     parser.add_argument('--reviewer-model-name', type=str, default="deepseek-chat", help='Reviewer LLM model, gpt-4o')
-    parser.add_argument('--double-checker-model-name', type=str, default="deepseek-chat", help='Reviewer LLM model, gpt-4o')
+    parser.add_argument('--double-checker-model-name', type=str, default="deepseek-chat", help='Double checker LLM model, gpt-4o')
+    parser.add_argument('--tool-call-model-name', type=str, default="deepseek-chat", help='Tool call LLM model, gpt-4o')
     parser.add_argument('--doc-batch-size', type=int, default=50, help='Batch size for document processing')
     
     return parser.parse_args(*args)

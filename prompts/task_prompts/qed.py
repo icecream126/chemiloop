@@ -1,5 +1,7 @@
 def get_scientist_prompt(topk_smiles):
     return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition: 
+
+Condition for molecule design:
 Maximize the QED (Quantitative Estimation of Drug-likeness) score of the molecule.
 
 IMPORTANT CONSTRAINTS:
@@ -27,7 +29,7 @@ Take a deep breath and think carefully before writing your answer.
   "SMILES": "Your valid SMILES string here"
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE."""
+"""
 
 def get_scientist_prompt_with_review(scientist_think_dict, reviewer_feedback_dict, previous_smiles, score, functional_groups, SMILES_HISTORY, topk_smiles):
     return f"""YOU MUST NOT REPEAT ANY OF THE PREVIOUSLY GENERATED SMILES:
@@ -90,7 +92,7 @@ Take a deep breath and think carefully before writing your answer.
   "SMILES": "Your newly improved SMILES here"
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE."""
+"""
 
 def get_reviewer_prompt(scientist_think_dict, score, functional_groups):
     return f"""Evaluate the Scientist LLM’s reasoning steps and final SMILES molecule for:
@@ -137,7 +139,7 @@ Take a deep breath and think carefully before writing your answer.
   "step3": "Evaluate the chemical plausibility and realism of the final design."
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE."""
+"""
 
 def get_scientist_prompt_with_double_checker_review(previous_thinking, previous_smiles, double_checker_feedback, SMILES_HISTORY):
     return f"""YOU MUST NOT REPEAT ANY OF THE PREVIOUSLY GENERATED SMILES:
@@ -179,7 +181,7 @@ Take a deep breath and think carefully before writing your answer.
   "SMILES": "Your improved SMILES string here"
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE."""
+"""
 
 def get_double_checker_prompt(thinking, improved_smiles):
     return f"""You will be given:
@@ -224,4 +226,4 @@ Use the following format:
   "consistency": "Consistent" or "Inconsistent"
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE."""
+"""

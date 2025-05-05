@@ -2,13 +2,13 @@
 
 # List of tasks
 tasks=(
-    # "albuterol_similarity"
-    # "amlodipine_mpo"
-    # "celecoxib_rediscovery"
-    # "deco_hop"
-    # "drd2"
-    # "fexofenadine_mpo"
-    # "gsk3b"
+    "albuterol_similarity"
+    "amlodipine_mpo"
+    "celecoxib_rediscovery"
+    "deco_hop"
+    "drd2"
+    "fexofenadine_mpo"
+    "gsk3b"
     "isomers_c7h8n2o2"
     "isomers_c9h10n2o2pf2cl"
     "jnk3"
@@ -29,7 +29,7 @@ tasks=(
 
 # List of versions
 # versions=("v1.py" "v2.py" "v3.py" "v4.py")
-versions=("v4.py")
+versions=("v5.py")
 
 # Initialize api_num
 api_num=1

@@ -34,7 +34,7 @@ Take a deep breath and think carefully before writing your answer.
   "SMILES": "Your valid SMILES string here"
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE. """
+ """
 
 def get_scientist_prompt_with_review(scientist_think_dict, reviewer_feedback_dict, previous_smiles, score, functional_groups, SMILES_HISTORY, topk_smiles):
     return f"""YOU MUST NOT REPEAT ANY OF THE PREVIOUSLY GENERATED SMILES:
@@ -91,7 +91,7 @@ Take a deep breath and think carefully before writing your answer.
   "SMILES": "Your corrected valid SMILES string"
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE. """
+ """
 
 def get_reviewer_prompt(scientist_think_dict, score, functional_groups):
     
@@ -139,7 +139,7 @@ Take a deep breath and think carefully before writing your answer.
   "step3": "Check if final structure is consistent with the scientist's reasoning. Identify any inconsistencies."
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE. """
+ """
 
 def get_scientist_prompt_with_double_checker_review(previous_thinking, previous_smiles, double_checker_feedback, SMILES_HISTORY):
     return f"""YOU MUST NOT REPEAT ANY OF THE PREVIOUSLY GENERATED SMILES:
@@ -180,7 +180,7 @@ Take a deep breath and think carefully before writing your answer.
   "SMILES": "Your improved valid SMILES string."
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE. """
+ """
 
 def get_double_checker_prompt(thinking, improved_smiles):
     return f"""You will evaluate the final improved molecule critically:
@@ -227,5 +227,5 @@ Take a deep breath and think carefully before writing your answer.
   "consistency": "Consistent" or "Inconsistent"
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE. """
+ """
 

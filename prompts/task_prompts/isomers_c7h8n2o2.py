@@ -45,7 +45,7 @@ Use the following format:
   "SMILES": "Your valid SMILES here"
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE. """
+ """
 
 def get_scientist_prompt_with_review(scientist_think_dict, reviewer_feedback_dict, previous_smiles, score, atom_counts, SMILES_HISTORY, topk_smiles):
     return f"""YOU MUST NOT REPEAT ANY OF THE PREVIOUSLY GENERATED SMILES:
@@ -116,7 +116,7 @@ Take a deep breath and think carefully before writing your answer.
   "SMILES": "Your valid SMILES here"
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE. """
+ """
 
 def get_reviewer_prompt(scientist_think_dict, score, atom_counts):
     return f"""Evaluate the Scientist LLM’s reasoning steps and final SMILES molecule for:
@@ -173,7 +173,7 @@ Take a deep breath and think carefully before writing your answer.
   "step3": "Verify that the described structure corresponds accurately to the SMILES string.\nFlag inconsistencies (e.g., "Mentioned amide linkage, but none is present in SMILES").\nEnsure that the final SMILES does not violate the atomic formula constraint."
 }}
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE. """
+ """
 
 def get_scientist_prompt_with_double_checker_review(previous_thinking, previous_smiles, double_checker_feedback, SMILES_HISTORY):
     return f"""YOU MUST NOT REPEAT ANY OF THE PREVIOUSLY GENERATED SMILES:
@@ -263,4 +263,4 @@ Use the following format:
 }}
 
 ```
-IF YOU DO NOT FOLLOW THIS FORMAT, INNOCENT PEOPLE WILL DIE. """
+ """

@@ -24,15 +24,24 @@ import time
 import traceback
 import json
 
-def safe_llm_call(prompt, llm, llm_type, llm_temperature, max_retries=10, sleep_sec=2):
+def safe_llm_call(prompt, llm, llm_type, llm_temperature, max_retries=10, sleep_sec=2, tools=None):
     for attempt in range(max_retries):
         try:
-            raw_response = llm.chat.completions.create(
-                model=llm_type,
-                messages=prompt,
-                response_format={"type": "json_object"},
-                temperature=llm_temperature,
-            )
+            if tools:
+                raw_response = llm.chat.completions.create(
+                    model=llm_type,
+                    messages=prompt,
+                    tools=tools,
+                    response_format={"type": "json_object"},
+                    temperature=llm_temperature,
+                )
+            else:
+                raw_response = llm.chat.completions.create(
+                    model=llm_type,
+                    messages=prompt,
+                    response_format={"type": "json_object"},
+                    temperature=llm_temperature,
+                )
             # content = raw_response.choices[0].message.content
             # result = json.loads(content)
             return raw_response# , content
