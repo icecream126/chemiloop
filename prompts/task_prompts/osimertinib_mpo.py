@@ -1,8 +1,5 @@
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
-    return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Your task is to design a SMILES string for a molecule that satisfies the following conditions:
+def get_scientist_prompt(topk_smiles):
+    return f"""Your task is to design a SMILES string for a molecule that satisfies the following conditions:
 - High structural similarity to osimertinib (SMILES: "COc1cc(N(C)CCN(C)C)c(NC(=O)C=C)cc1Nc2nccc(n2)c3cn(C)c4ccccc34").
 - Achieve a Topological Polar Surface Area (TPSA) close to **100**.
 - Maintain a low-to-moderate lipophilicity (LogP ≈ **1**).

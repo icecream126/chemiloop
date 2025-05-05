@@ -2,11 +2,8 @@
 
 zaleplon_mpo_smiles="O=C(C)N(CC)C1=CC=CC(C2=CC=NC3=C(C=NN23)C#N)=C1"
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
-    return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Your task is to design a SMILES string for a molecule that satisfies the following conditions: 
+def get_scientist_prompt(topk_smiles):
+    return f"""Your task is to design a SMILES string for a molecule that satisfies the following conditions: 
 - Achieve high structural similarity to zaleplon (SMILES: {zaleplon_mpo_smiles}).
 - Match the molecular formula **C19H17N3O2** exactly (correct atom counts).
 

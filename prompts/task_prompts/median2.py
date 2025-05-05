@@ -5,11 +5,8 @@ tadalafil_smiles = "O=C1N(CC(N2C1CC3=C(C2C4=CC5=C(OCO5)C=C4)NC6=C3C=CC=C6)=O)C"
 sildenafil_smiles = "CCCC1=NN(C2=C1N=C(NC2=O)C3=C(C=CC(=C3)S(=O)(=O)N4CCN(CC4)C)OCC)C"
 
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
-    return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Your task is to design a SMILES string for a molecule that is simultaneously similar to two reference molecules:
+def get_scientist_prompt(topk_smiles):
+    return f"""Your task is to design a SMILES string for a molecule that is simultaneously similar to two reference molecules:
 - Tadalafil (SMILES: {tadalafil_smiles})
 - Sildenafil (SMILES: {sildenafil_smiles})
 

@@ -14,8 +14,8 @@ forbidden_deco2_smarts = "[#7]-c1ccc2ncsc2c1"
 # Scaffold description
 # decohop_core_description = "the fixed scaffold corresponding to the SMARTS pattern: [#7]-c1n[c;h1]nc2[c;h1]c(-[#8])[c;h0][c;h1]c12"
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
-    return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition:
+def get_scientist_prompt(topk_smiles):
+    return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition: 
 Design a drug-like molecule that preserves the **fixed core scaffold** while modifying peripheral decorations to explore chemical diversity.
 
 Chemical Constraints:
@@ -44,7 +44,14 @@ The text inside each key explains what kind of answer is expected — it is a **
 DO NOT repeat the example text or instructions.  
 Instead, write your own scientifically reasoned content based on the task.
 
-Use the following format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "List and explain the preserved scaffold features, and indicate which parts can be modified.",
@@ -106,7 +113,14 @@ Reviewer's feedback:\n{reviewer_feedback_dict["step3"]}
 
 Now, based on your previous thought and the reviewer's feedback, improve your design.
 
-Return your answer in the following JSON format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "List of preserved core scaffold and allowed modification points.",
@@ -145,7 +159,14 @@ SMILES: {scientist_think_dict["smiles"]}
 - Detected functional groups:
 {functional_groups}
 
-Return your review in the following JSON format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Whether the core scaffold was correctly preserved and forbidden motifs were avoided.",
@@ -185,7 +206,14 @@ Double-checker Feedback:
 
 Now, update your molecule according to the feedback.
 
-Return in the following JSON format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "List preserved scaffold features and allowed decoration points.",
@@ -226,7 +254,14 @@ Step 3: {thinking['step3']}
 === SCIENTIST'S SMILES ===
 {improved_smiles}
 
-Return your evaluation in this JSON format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Evaluate consistency of Step1 (preservation of scaffold and SMARTS).",

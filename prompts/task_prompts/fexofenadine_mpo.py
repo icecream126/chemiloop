@@ -2,7 +2,7 @@ from rdkit import Chem, DataStructs
 from rdkit.Chem import Descriptors, rdMolDescriptors
 fexofenadine_smiles="CC(C)(C(=O)O)c1ccc(cc1)C(O)CCCN2CCC(CC2)C(O)(c3ccccc3)c4ccccc4"
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
+def get_scientist_prompt(topk_smiles):
     return f"""Your task is to design a SMILES string for a molecule that satisfies the following conditions:
 - Achieve high structural similarity to fexofenadine (SMILES: {fexofenadine_smiles}).
 - Target a Topological Polar Surface Area (TPSA) around **90**.
@@ -18,7 +18,14 @@ You are provided with:
 Top-5 Relevant SMILES Examples (SMILES, score):
 {topk_smiles}
 
-You must return your response in the following strict JSON format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "List the key structural features of fexofenadine (e.g., carboxylic acid group, multiple aromatic rings, hydroxyl groups, piperidine ring).",
@@ -68,7 +75,14 @@ Step 3:
 - Your thought: {scientist_think_dict["step3"]}
 - Reviewer feedback: {reviewer_feedback_dict["step3"]}
 
-Return your improved molecule following this strict format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Updated key features of fexofenadine and molecular property targets (TPSA, LogP).",
@@ -110,7 +124,14 @@ SMILES: {scientist_think_dict["smiles"]}
 - Detected functional groups:
 {functional_groups}
 
-Please return your review using the following JSON format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Evaluate whether key fexofenadine features and property goals were correctly captured.",
@@ -143,7 +164,14 @@ Double-checker feedback:
 - Step2 Evaluation: {double_checker_feedback['step2']}
 - Step3 Evaluation: {double_checker_feedback['step3']}
 
-Now thoughtfully revise your molecule following this strict format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "List corrected critical features and property constraints for fexofenadine (TPSA ≈ 90, LogP ≈ 4).",
@@ -183,7 +211,14 @@ Step3: {thinking['step3']}
 === FINAL SMILES ===
 {improved_smiles}
 
-Return your evaluation using the strict format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Analyze if key structural and property objectives (TPSA, LogP) were preserved.",

@@ -7,14 +7,8 @@ from guacamol.utils.chemistry import canonicalize
 import utils.utils
 
     
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
-  return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Task: Design a molecule in SMILES format that satisfies the condition.
-
-Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
+def get_scientist_prompt(topk_smiles):
+  return f"""Your task is to design a SMILES string for a molecule that satisfies the following conditions: 
 
 Condition for molecular design:
 Create a valid chemical structure in SMILES format that is an isomer of the molecular formula C7H8N2O2.

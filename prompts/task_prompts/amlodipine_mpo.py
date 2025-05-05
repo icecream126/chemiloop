@@ -6,8 +6,8 @@ from guacamol.utils.chemistry import canonicalize
 import utils.utils
 
 amlodipine_smiles = "Clc1ccccc1C2C(=C(/N/C(=C2/C(=O)OCC)COCCN)C)\C(=O)OC"
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
-    return f"""Your task is to design a SMILES string for a molecule that satisfies the conditions. 
+def get_scientist_prompt(topk_smiles):
+    return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition: 
 
 Conditions:
 - Achieve high structural similarity to amlodipine (SMILES: {amlodipine_smiles}).
@@ -23,8 +23,14 @@ You are provided with:
 Top-5 Relevant SMILES Examples (SMILES, score):
 {topk_smiles}
 
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
 
-Please return your reasoning and design following this strict format:
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "List the critical structural features of amlodipine (e.g., 'aryl group, ester groups, amine side chain, 3 ring system') and property goals (e.g., 'around 3 rings').",
@@ -75,7 +81,14 @@ Step 3:
 - Your thought: {scientist_think_dict["step3"]}
 - Reviewer feedback: {reviewer_feedback_dict["step3"]}
 
-Return your improved thinking and SMILES in the following format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Refined list of critical features and property targets for amlodipine rediscovery.",
@@ -112,7 +125,14 @@ SMILES: {scientist_think_dict["smiles"]}
 - Detected functional groups:
 {functional_groups}
 
-Your response must follow this format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Assess whether critical features were correctly identified. Mention missed or misinterpreted features.",
@@ -147,7 +167,14 @@ Double-checker feedback:
 
 Now, revise your molecule thoughtfully.
 
-Use this strict format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "List corrected and preserved features (e.g., ester group, amine group, 3-ring system).",
@@ -185,7 +212,14 @@ Step3: {thinking['step3']}
 === SCIENTIST'S SMILES ===
 {improved_smiles}
 
-Your evaluation must follow this format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Evaluate if the preserved features (e.g., 3 rings, ester groups) are correctly captured.",

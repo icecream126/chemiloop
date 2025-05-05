@@ -2,8 +2,10 @@ import json
 
 # GSK3B task LLM prompts
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
-    return f"""Your task is to design a SMILES string for a molecule that achieves high predicted binding affinity to the GSK3B target.
+def get_scientist_prompt(topk_smiles):
+    return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition: 
+Condition:    
+Design a molecule that achieves high predicted binding affinity to the GSK3B target.
 
 IMPORTANT:
 - GSK3B activity is evaluated by a predictive ML model trained on bioactivity data.
@@ -16,7 +18,14 @@ You are provided with:
 Top-5 Example Molecules (SMILES, score):
 {topk_smiles}
 
-Return your response in the following JSON format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Identify key substructures and features associated with GSK3B activity.",
@@ -57,7 +66,14 @@ Feedback:
 
 Use the feedback to revise your design.
 
-Return your response in the following JSON format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "List preserved critical features and new ideas.",
@@ -87,7 +103,14 @@ SMILES: {scientist_think_dict['smiles']}
 - Detected functional groups:
 {functional_groups}
 
-Return your feedback in the following JSON format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "List features correctly captured and any missing important features.",
@@ -121,7 +144,14 @@ Step3 Feedback: {double_checker_feedback['step3']}
 
 Now revise your design and molecule.
 
-Return your new design in the following JSON format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Identify preserved and newly added key features.",
@@ -148,7 +178,14 @@ Step3: {thinking['step3']}
 --- NEW SMILES ---
 {improved_smiles}
 
-Return your evaluation in the following JSON format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Check if Step1 thinking is correctly reflected in the SMILES.",

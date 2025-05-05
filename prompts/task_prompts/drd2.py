@@ -1,6 +1,6 @@
 import json
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
+def get_scientist_prompt(topk_smiles):
     return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition: 
 Maximize the probability of binding to the DRD2 receptor (Dopamine Receptor D2).
 
@@ -17,7 +17,14 @@ You are provided with:
 Top-5 Relevant SMILES Examples (SMILES, score):
 {topk_smiles}
 
-Use the following JSON format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Identify chemical features known to favor DRD2 binding (e.g., aromatic systems, basic nitrogen atoms, specific ring systems).",
@@ -66,7 +73,14 @@ Step3:
 Reviewer's feedback:
 {reviewer_feedback_dict['step3']}
 
-Use the following JSON format:
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Update your list of critical features for DRD2 binding.",
@@ -97,7 +111,15 @@ Scientist's generated SMILES:
 - Functional Groups detected: 
 {functional_groups}
 
-Return your evaluation using this JSON format:
+
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Features correctly identified and missed.",
@@ -129,7 +151,15 @@ Double-checker's Feedback:
 - Step2 Evaluation: {double_checker_feedback['step2']}
 - Step3 Evaluation: {double_checker_feedback['step3']}
 
-Use the following JSON format to revise:
+
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Update critical features important for DRD2 affinity.",
@@ -157,7 +187,15 @@ Step3: {thinking['step3']}
 Generated SMILES:
 {improved_smiles}
 
-Return your evaluation in this JSON format:
+
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Does Step1 reasoning match SMILES?",

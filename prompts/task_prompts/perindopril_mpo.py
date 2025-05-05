@@ -1,8 +1,5 @@
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
-    return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Your task is to design a SMILES string for a molecule that satisfies the following conditions:
+def get_scientist_prompt(topk_smiles):
+    return f"""Your task is to design a SMILES string for a molecule that satisfies the following conditions:
 - High structural similarity to perindopril (SMILES: O=C(OCC)C(NC(C(=O)N1C(C(=O)O)CC2CCCCC12)C)CCC).
 - The molecule should contain approximately **2 aromatic rings**.
 

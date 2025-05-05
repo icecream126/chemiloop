@@ -12,11 +12,8 @@ scaffold_to_remove_smarts = "[#7]-c1n[c;h1]nc2[c;h1]c(-[#8])[c;h0][c;h1]c12"
 
 scaffoldhop_description = "remove the original scaffold matching SMARTS pattern: [#7]-c1n[c;h1]nc2[c;h1]c(-[#8])[c;h0][c;h1]c12 while preserving the key decoration matching: [#6]-[#6]-[#6]-[#8]-[#6]~[#6]~[#6]~[#6]~[#6]-[#7]-c1ccc2ncsc2c1"
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
-    return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Your task is to design a SMILES string for a molecule that satisfies the following condition:
+def get_scientist_prompt(topk_smiles):
+    return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition:
 Design a drug-like molecule that **removes the original scaffold** while **preserving critical decorations**.
 
 Chemical Constraints:

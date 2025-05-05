@@ -10,12 +10,9 @@ troglitazon_canonical_smiles = canonicalize(troglitazon_smiles)
 troglitazon_mol = Chem.MolFromSmiles(troglitazon_smiles)
 troglitazon_functional_group = utils.utils.describe_troglitazon_features(troglitazon_mol)
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
+def get_scientist_prompt(topk_smiles):
   
-  return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Your task is to design a SMILES string for a molecule that satisfies the following condition: 
+  return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition: 
 Design a drug-like molecule structurally similar to troglitazone (SMILES: {troglitazon_smiles}, canonical: {troglitazon_canonical_smiles}). 
 Preserve the core scaffold and important pharmacophores. Troglitazone contains: \n{troglitazon_functional_group}.
 

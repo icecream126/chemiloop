@@ -1,8 +1,5 @@
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
-    return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Your task is to design a SMILES string for a molecule that satisfies the following condition: 
+def get_scientist_prompt(topk_smiles):
+    return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition: 
 Maximize the QED (Quantitative Estimation of Drug-likeness) score of the molecule.
 
 IMPORTANT CONSTRAINTS:

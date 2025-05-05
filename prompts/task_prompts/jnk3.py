@@ -5,11 +5,8 @@ import json
 # jnk3_mol = Chem.MolFromSmiles(jnk3_smiles)
 # jnk3_functional_group = utils.utils.describe_jnk3_features(jnk3_mol)
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
-    return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Your task is to design a SMILES string for a molecule that satisfies the following condition: 
+def get_scientist_prompt(topk_smiles):
+    return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition: 
 Design a drug-like molecule with high predicted JNK3 inhibitory activity.
 Maximize the model-predicted probability of JNK3 inhibition.
 

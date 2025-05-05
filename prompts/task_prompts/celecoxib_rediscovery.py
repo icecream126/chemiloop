@@ -12,9 +12,9 @@ celecoxib_mol = Chem.MolFromSmiles(celecoxib_smiles)
 celecoxib_functional_group = utils.utils.describe_celecoxib_features(celecoxib_mol)
 
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
+def get_scientist_prompt(topk_smiles):
   
-  return f"""Your task is to design a SMILES string for a molecule that satisfies the condition.
+  return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition: 
   
 Condition for molecule design:
 Design a drug-like molecule structurally similar to celecoxib (SMILES: {celecoxib_smiles}, canonical: {celecoxib_canonical_smiles}). 
@@ -33,7 +33,13 @@ Top-5 Relevant SMILES Examples (SMILES, score):
 {topk_smiles}
 
 You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
 
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "List of the target’s critical structural/property features (e.g., 'Celecoxib: pyrazole core, sulfonamide group, phenyl rings for hydrophobicity.')",
@@ -102,7 +108,14 @@ The text inside each key explains what kind of answer is expected — it is a **
 DO NOT repeat the example text or instructions.  
 Instead, write your own scientifically reasoned content based on the task.
 
-Use the following format:  
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "List of the target’s critical structural/property features (e.g., 'Celecoxib: pyrazole core, sulfonamide group, two phenyl rings.')\nIf property-based, specify requirements (e.g., 'Maintain hydrophobic aromatic groups to enhance binding').",
@@ -148,8 +161,14 @@ The text inside each key explains what kind of answer is expected — it is a **
 DO NOT repeat the example text or instructions.  
 Instead, write your own scientifically reasoned content based on the task.
 
-Use the following format:  
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
 
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "List accurate features and functional groups identified.\nMention any critical features and functional groups that were missed or misinterpreted.",
@@ -190,7 +209,14 @@ The text inside each key explains what kind of answer is expected — it is a **
 DO NOT repeat the example text or instructions.  
 Instead, write your own scientifically reasoned content based on the task.
 
-Use the following format:  
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "List of the target’s critical structural/property features (e.g., 'Celecoxib: pyrazole core, sulfonamide group, two phenyl rings.')\nIf property-based, specify requirements (e.g., 'Maintain aromaticity, preserve sulfonamide for binding.')",
@@ -230,7 +256,14 @@ The text inside each key explains what kind of answer is expected — it is a **
 DO NOT repeat the example text or instructions.  
 Instead, write your own scientifically reasoned content based on the task.
 
-Use the following format:  
+You must return your response in the following json format.
+The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
+
+DO NOT repeat the example text or instructions.  
+Instead, write your own scientifically reasoned content based on the task.
+
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "Your analysis of whether scientist's Step1 thinking is chemically valid and reflected in the SMILES.",

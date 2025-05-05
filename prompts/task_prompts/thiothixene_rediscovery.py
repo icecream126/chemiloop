@@ -11,12 +11,9 @@ thiothixene_canonical_smiles = canonicalize(thiothixene_smiles)
 thiothixene_mol = Chem.MolFromSmiles(thiothixene_smiles)
 thiothixene_functional_group = utils.utils.describe_thiothixene_features(thiothixene_mol)
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
+def get_scientist_prompt(topk_smiles):
   
-  return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Your task is to design a SMILES for a molecule that satisfies the following condition: 
+  return f"""Your task is to design a SMILES for a molecule that satisfies the following condition: 
 Design a drug-like molecule structurally similar to thiothixene (SMILES: {thiothixene_smiles}, canonical: {thiothixene_canonical_smiles}). 
 Preserve the core scaffold and important pharmacophores. Thiothixene contains: \n{thiothixene_functional_group}.
 

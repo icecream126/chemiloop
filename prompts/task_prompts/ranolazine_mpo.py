@@ -5,11 +5,8 @@ ranolazine_smiles = "COc1ccccc1OCC(O)CN2CCN(CC(=O)Nc3c(C)cccc3C)CC2"
 ranolazine_mol = Chem.MolFromSmiles(ranolazine_smiles)
 ranolazine_fp = rdMolDescriptors.GetHashedAtomPairFingerprintAsBitVect(ranolazine_mol)
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
-    return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Your task is to design a SMILES string for a molecule that satisfies the following conditions:
+def get_scientist_prompt(topk_smiles):
+    return f"""Your task is to design a SMILES string for a molecule that satisfies the following conditions:
 - High structural Tanimoto similarity to ranolazine (SMILES: COc1ccccc1OCC(O)CN2CCN(CC(=O)Nc3c(C)cccc3C)CC2).
 - Achieve a Topological Polar Surface Area (TPSA) around **95**.
 - Maintain a lipophilicity (LogP) around **7**.

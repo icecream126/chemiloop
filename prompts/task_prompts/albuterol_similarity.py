@@ -11,15 +11,9 @@ albuterol_canonical_smiles = canonicalize(albuterol_smiles)
 albuterol_mol = Chem.MolFromSmiles(albuterol_smiles)
 albuterol_functional_group = utils.utils.describe_albuterol_features(albuterol_mol)
 
-def condition(albuterol_smiles, albuterol_canonical_smiles, albuterol_functional_group):
-    return f"""Design a drug-like molecule structurally similar to albuterol (SMILES: {albuterol_smiles}, canonical: {albuterol_canonical_smiles}).
-
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
+def get_scientist_prompt(topk_smiles):
   
-  return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Your task is to design a SMILES string for a molecule that satisfies the condition.
+  return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition: 
 
 Condition for molecule design:
 Design a drug-like molecule structurally similar to albuterol (SMILES: {albuterol_smiles}, canonical: {albuterol_canonical_smiles}). 
@@ -37,14 +31,14 @@ You are provided with:
 Top-5 Relevant SMILES Examples (SMILES, score):
 {topk_smiles}
 
-
 You must return your response in the following json format.
 The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
 
 DO NOT repeat the example text or instructions.  
 Instead, write your own scientifically reasoned content based on the task.
 
-Use the following format:  
+Use the following format.
+Take a deep breath and think carefully before writing your answer.
 ```json
 {{
   "step1": "List of the target’s critical structural/property features (e.g., 'Albuterol: phenyl ring, β-hydroxyamine, catechol-like substitution')\nIf property-based, specify requirements (e.g., "logP > 3: add hydrophobic groups").",
@@ -236,14 +230,14 @@ Step3: {thinking['step3']}
 === SCIENTIST'S SMILES === 
 {improved_smiles}
 
-
 You must return your response in the following json format.
 The text inside each key explains what kind of answer is expected — it is a **guideline, not the answer**.
 
 DO NOT repeat the example text or instructions.  
 Instead, write your own scientifically reasoned content based on the task.
 
-Use the following format:  
+Use the following format.
+Take a deep breath and think carefully before writing your answer. 
 ```json
 {{
   "step1": "Your analysis of whether scientist's Step1 thinking is chemically valid and  reflected in the SMILES.",

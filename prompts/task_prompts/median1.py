@@ -5,11 +5,8 @@ camphor_smiles = "CC1(C)C2CCC1(C)C(=O)C2"
 menthol_smiles = "CC(C)C1CCC(C)CC1O"
 
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
-    return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Your task is to design a SMILES string for a molecule that satisfies the following condition:
+def get_scientist_prompt(topk_smiles):
+    return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition:
 Create a drug-like molecule that is simultaneously similar to both camphor (SMILES: {camphor_smiles}) and menthol (SMILES: {menthol_smiles}), based on ECFP4 fingerprint similarity.
 
 IMPORTANT CONSTRAINT:

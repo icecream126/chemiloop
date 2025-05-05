@@ -8,11 +8,8 @@ sitagliptin_logP = Descriptors.MolLogP(sitagliptin_mol)
 sitagliptin_TPSA = Descriptors.TPSA(sitagliptin_mol)
 
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
-    return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Your task is to design a SMILES string that satisfies the following conditions:
+def get_scientist_prompt(topk_smiles):
+    return f"""Your task is to design a SMILES string that satisfies the following conditions:
 Conditions: 
 - Create a structurally similar (i.e., high Tanimoto similarity score) to sitagliptin (Fc1cc(c(F)cc1F)CC(N)CC(=O)N3Cc2nnc(n2CC3)C(F)(F)F):
 - Match the **molecular formula** C16H15F6N5O (no missing or extra atoms).

@@ -12,12 +12,9 @@ mestranol_mol = Chem.MolFromSmiles(mestranol_smiles)
 mestranol_functional_group = utils.utils.describe_albuterol_features(mestranol_mol)
 
 
-def get_scientist_prompt(SMILES_HISTORY, topk_smiles):
+def get_scientist_prompt(topk_smiles):
   
-  return f"""Previously generated SMILES. YOU MUST NOT REPEAT ANY OF THEM:
-{SMILES_HISTORY}
-
-Your task is to design a SMILES string for a molecule that satisfies the following condition: 
+  return f"""Your task is to design a SMILES string for a molecule that satisfies the following condition: 
 Design a drug-like molecule structurally similar to mestranol (SMILES: {mestranol_smiles}, canonical: {mestranol_canonical_smiles}). 
 Preserve the core scaffold and key functional groups. Mestranol contains: {mestranol_functional_group}.
   
