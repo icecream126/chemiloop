@@ -10,7 +10,7 @@ from tqdm import tqdm
 RDLogger.DisableLog('rdApp.*')
 
 def find_log_folder(run_id):
-    logs_dir = "./logs"
+    logs_dir = "../logs"
     for folder_name in os.listdir(logs_dir):
         if run_id in folder_name:
             return os.path.join(logs_dir, folder_name)
@@ -234,5 +234,5 @@ for obj in smiles_path_list:
 
     plot_figures(mol_buffer, log_dir)
 
-entire_top10_auc_df.to_csv("entire_top10_auc.csv")
-print("entire_top10_auc.csv saved")
+entire_top10_auc_df.to_csv(f"{projects[0]}.csv")
+print(f"{projects[0]}.csv saved")

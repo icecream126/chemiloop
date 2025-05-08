@@ -3,6 +3,19 @@
 # https://github.com/BenevolentAI/guacamol/blob/60ebe1f6a396f16e08b834dce448e9343d259feb/guacamol/standard_benchmarks.py#L66
 from guacamol.standard_benchmarks import isomers_c7h8n2o2, isomers_c9h10n2o2pf2cl, similarity, amlodipine_rings, decoration_hop
 from tdc import Oracle
+import sys
+sys.path.append("/home/khm/Tartarus")
+from tartarus import pce
+from tartarus import tadf
+
+def get_emitters_score(smiles: str):    
+    st, osc, combined = tadf.get_properties(smiles)
+    return st, osc, combined
+
+def get_opv_score(smiles: str):
+    # return opv().objective.score(smiles)
+    dipm, gap, lumo, combined, pce_pcbm_sas, pce_pcdtbt_sas = pce.get_properties(smiles)
+    return dipm, gap, lumo, combined, pce_pcbm_sas, pce_pcdtbt_sas
 
 
 # https://github.com/BenevolentAI/guacamol/blob/master/guacamol/benchmark_suites.py#L120

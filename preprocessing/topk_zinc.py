@@ -1,3 +1,5 @@
+import os
+from tqdm import tqdm
 import json
 
 target_list = [
@@ -25,16 +27,20 @@ target_list = [
     'valsartan_smarts_score',
     'zaleplon_mpo_score'
     ]
-for target in target_list:
+output_dir = "../dataset/250k_top_100"
+os.makedirs(output_dir, exist_ok=True)
+
+# Iterate with progress bar
+for target in tqdm(target_list, desc="Processing targets"):
     # Load the dataset
-    with open("/home/khm/chemiloop/dataset/entire_zinc10.json", "r") as f:
+    with open("/home/khm/chemiloop/dataset/entire_zinc250.json", "r") as f:
         dataset = json.load(f)
 
-    # Sort by albuterol_similarity_score in descending order and take top-5
-    top_5 = sorted(dataset, key=lambda x: x.get(target, 0), reverse=True)[:5]
+    # Sort by target score in descending order and take top-5
+    top_100 = sorted(dataset, key=lambda x: x.get(target, 0), reverse=True)[:100]
 
     # Save to new JSON file
-    top_5_path = f"./dataset/10k_top_5/{target}.json"
-    with open(top_5_path, "w") as f:
-        json.dump(top_5, f, indent=2)
+    top_100_path = os.path.join(output_dir, f"{target}.json")
+    with open(top_100_path, "w") as f:
+        json.dump(top_100, f, indent=2)
 

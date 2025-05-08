@@ -53,7 +53,16 @@ def safe_llm_call(prompt, llm, llm_type, llm_temperature, max_retries=10, sleep_
     return {}, ""
 
 
+def format_topk_smiles_emitters(topk_smiles):
+
+    formatted = "\n".join(
+        f"({repr(smiles.strip())}, single-triplet value: {st:.6f}, oscillator strength: {osc:.6f}, combined objective: {combined:.6f})"
+        for smiles, st, osc, combined in topk_smiles
+    )
+    return formatted
+
 def format_topk_smiles(topk_smiles):
+
     formatted = "\n".join(
         f"({repr(smiles.strip())}, {score:.6f})"
         for smiles, score in topk_smiles

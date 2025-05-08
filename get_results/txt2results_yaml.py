@@ -9,7 +9,7 @@ from rdkit import RDLogger
 RDLogger.DisableLog('rdApp.*')
 
 def find_log_folder(run_id):
-    logs_dir = "./logs"
+    logs_dir = "../logs"
     for folder_name in os.listdir(logs_dir):
         if run_id in folder_name:
             return os.path.join(logs_dir, folder_name)
@@ -162,5 +162,5 @@ for obj in smiles_path_list:
     auc_score = load_yaml_and_compute_auc(yaml_path, top_k=10, freq_log=1, max_oracle_calls=1000, log_dir=log_dir)
 
     result.at[task, project] = auc_score
-result.to_csv("pmo_v4_no_redundant_smiles.csv")
-print("Saved to pmo_v4_no_redundant_smiles.csv")
+result.to_csv(f"{projects[0]}.csv")
+print(f"Saved to {projects[0]}.csv")

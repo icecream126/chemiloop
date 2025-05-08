@@ -24,11 +24,11 @@ tasks = [
     "scaffold_hop",
     "sitagliptin_mpo",
     "thiothixene_rediscovery",
-    # "troglitazon_rediscovery",
-    "valsartan_smarts",
+    "troglitazon_rediscovery",
+    # "valsartan_smarts",
     "zaleplon_mpo"
 ]
-projects = ["pmo_v5"]
+
 
 def find_log_folder(run_id):
     logs_dir = "../logs"
@@ -43,9 +43,13 @@ def plot_df(keyword, df1, df2, task, logdir):
     df2[keyword] = pd.to_numeric(df2[keyword], errors='coerce')
 
     # Plotting
+
     plt.figure(figsize=(10, 6))
-    plt.plot(df1[keyword], label='molleo', color='blue')
-    plt.plot(df2[keyword], label='Ours', color='orange')
+    plt.plot(df1[keyword], label='v5', color='blue')
+    plt.plot(df2[keyword], label='v4', color='orange')
+    # Add vertical bold red line at x = 10
+    if keyword == 'TOP10_AVG':
+        plt.axvline(x=10, color='red', linewidth=2.5, linestyle='--', label='x = 10')
     plt.title(task)
     plt.xlabel('Step')
     plt.ylabel(keyword)
@@ -58,18 +62,15 @@ def plot_df(keyword, df1, df2, task, logdir):
     print(f"Saved plot for {task} with keyword {keyword} to {logdir}/{task}_{keyword}.png")
 
 
-
-
 chemiloop_csv_path_dict = {}
 api = wandb.Api()
-entire_top10_auc_df = pd.DataFrame(index=tasks, columns=projects)
+projects = ["pmo_v4_no_redundancy"]
 # Loop over projects and tasks
 for project in projects:
     runs = api.runs(f"icecream126/{project}")  # <-- CHANGE 'your-entity-name' to your wandb username/team
     for task in tasks:
         matching_runs = [run for run in runs if run.name == task]
         if not matching_runs:
-            entire_top10_auc_df.at[task, project] = None
             continue
         
         run = matching_runs[0]  # Assume 1 run per task per project
@@ -79,23 +80,41 @@ for project in projects:
         log_folder = find_log_folder(run_id)
         if log_folder is None:
             print(f"Warning: Cannot find log folder for run_id {run_id}")
-            entire_top10_auc_df.at[task, project] = None
             continue
 
         csv_path = os.path.join(log_folder, "results.csv")
         chemiloop_csv_path_dict[task] = csv_path
 
-molleo_csv_dir = "/home/khm/chemiloop/logs/molleo_deepseek"
-molleo_csv_path_dict = {}
-for task in tasks:
-    for filename in os.listdir(molleo_csv_dir):
-        if task in filename and filename.endswith('.csv'):
-            molleo_csv_path_dict[task] = os.path.join(molleo_csv_dir, filename)
-            break
 
-logdir = "/home/khm/chemiloop/comparison_molleo_v5_plots"
+
+chemiloop_csv_path_dict2 = {}
+projects = ["pmo_v5"]
+# Loop over projects and tasks
+for project in projects:
+    runs = api.runs(f"icecream126/{project}")  # <-- CHANGE 'your-entity-name' to your wandb username/team
+    
+    for task in tasks:
+        matching_runs = [run for run in runs if run.name == task]
+        
+        # run = matching_runs[0]  # Assume 1 run per task per project
+        # import pdb; pdb.set_trace()
+        print('task', task)
+        run_id = matching_runs[0].id
+
+        # 1. Find corresponding folder
+        log_folder = find_log_folder(run_id)
+        if log_folder is None:
+            print(f"Warning: Cannot find log folder for run_id {run_id}")
+            continue
+
+        csv_path = os.path.join(log_folder, "results.csv")
+        chemiloop_csv_path_dict2[task] = csv_path
+
+
+logdir = "/home/khm/chemiloop/comparison_v4_v5_plots"
+os.makedirs(logdir, exist_ok=True)
 for task in tasks:
-    molleo_csv = molleo_csv_path_dict.get(task)
+    molleo_csv = chemiloop_csv_path_dict2.get(task)
     chemiloop_csv = chemiloop_csv_path_dict.get(task)
 
     molleo_df = pd.read_csv(molleo_csv)
